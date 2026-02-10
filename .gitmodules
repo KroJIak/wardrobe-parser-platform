@@ -1,0 +1,12 @@
+[submodule "backend"]
+	path = backend
+	url = https://github.com/KroJIak-modules/wardrobe-parser-backend.git
+	branch = dev
+[submodule "frontend"]
+	path = frontend
+	url = https://github.com/KroJIak-modules/wardrobe-parser-frontend.git
+	branch = dev
+[submodule "service"]
+	path = service
+	url = https://github.com/KroJIak-modules/wardrobe-parser-service.git
+	branch = dev
