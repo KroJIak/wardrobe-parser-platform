@@ -18,6 +18,19 @@ services:
     networks:
       - wardrobe-network
 
+  db-admin:
+    image: adminer:4
+    container_name: wardrobe-db-admin
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - "${DB_ADMIN_PORT:-10550}:8080"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - wardrobe-network
+
   backend-db-init:
     build:
       context: ./backend
@@ -27,7 +40,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=${BACKEND_DATABASE_URL}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - PYTHONPATH=/app
     command: ["python", "-m", "alembic", "upgrade", "head"]
     depends_on:
@@ -46,7 +59,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=${SERVICE_DATABASE_URL}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - PYTHONPATH=/app
     command: ["python", "-m", "alembic", "upgrade", "head"]
     depends_on:
@@ -64,7 +77,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=${BACKEND_DATABASE_URL}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
       - SERVICE_TOKEN=${SERVICE_TOKEN}
     ports:
@@ -86,7 +99,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=${SERVICE_DATABASE_URL}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - BACKEND_BASE_URL=${BACKEND_BASE_URL}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
       - SERVICE_TOKEN=${SERVICE_TOKEN}
