@@ -1,33 +1,33 @@
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: example-postgres
+    container_name: wardrobe-postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-example_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-example_secret}
-      POSTGRES_DB: ${POSTGRES_DB:-example_db}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "${POSTGRES_PORT:-example_port}:5432"
+      - "${POSTGRES_PORT}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-example_user} -d ${POSTGRES_DB:-example_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
-      - example-network
+      - wardrobe-network
 
-  db-init:
+  backend-db-init:
     build:
-      context: ./api
+      context: ./backend
       dockerfile: Dockerfile
-    container_name: example-db-init
+    container_name: wardrobe-backend-db-init
     working_dir: /app
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-example_user}:${POSTGRES_PASSWORD:-example_secret}@postgres:5432/${POSTGRES_DB:-example_db}
+      - DATABASE_URL=${BACKEND_DATABASE_URL}
       - PYTHONPATH=/app
     command: ["python", "-m", "alembic", "upgrade", "head"]
     depends_on:
@@ -35,46 +35,98 @@ services:
         condition: service_healthy
     restart: "no"
     networks:
-      - example-network
+      - wardrobe-network
 
-  api:
+  service-db-init:
     build:
-      context: ./api
+      context: ./service
       dockerfile: Dockerfile
-    container_name: example-api
+    container_name: wardrobe-service-db-init
+    working_dir: /app
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-example_user}:${POSTGRES_PASSWORD:-example_secret}@postgres:5432/${POSTGRES_DB:-example_db}
-    ports:
-      - "${API_PORT:-example_port}:8000"
+      - DATABASE_URL=${SERVICE_DATABASE_URL}
+      - PYTHONPATH=/app
+    command: ["python", "-m", "alembic", "upgrade", "head"]
     depends_on:
       postgres:
         condition: service_healthy
-      db-init:
+    restart: "no"
+    networks:
+      - wardrobe-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: wardrobe-backend
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=${BACKEND_DATABASE_URL}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - SERVICE_TOKEN=${SERVICE_TOKEN}
+    ports:
+      - "${BACKEND_PORT}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend-db-init:
         condition: service_completed_successfully
     restart: unless-stopped
     networks:
-      - example-network
+      - wardrobe-network
+
+  service:
+    build:
+      context: ./service
+      dockerfile: Dockerfile
+    container_name: wardrobe-service
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=${SERVICE_DATABASE_URL}
+      - BACKEND_BASE_URL=${BACKEND_BASE_URL}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - SERVICE_TOKEN=${SERVICE_TOKEN}
+      - SERVICE_SYNC_INTERVAL_SEC=${SERVICE_SYNC_INTERVAL_SEC}
+      - SERVICE_SYNC_BATCH_SIZE=${SERVICE_SYNC_BATCH_SIZE}
+      - SERVICE_REQUEST_TIMEOUT_SEC=${SERVICE_REQUEST_TIMEOUT_SEC}
+      - SERVICE_ENABLED_SITES=${SERVICE_ENABLED_SITES}
+      - EXAMPLE_SITE_URL=${EXAMPLE_SITE_URL}
+      - EXAMPLE_SITE_USE_FIXTURE=${EXAMPLE_SITE_USE_FIXTURE}
+    ports:
+      - "${SERVICE_PORT}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      service-db-init:
+        condition: service_completed_successfully
+      backend:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - wardrobe-network
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=${VITE_API_URL:-http://example}
-    container_name: example-frontend
+        - VITE_API_URL=http://localhost:${BACKEND_PORT}
+    container_name: wardrobe-frontend
     ports:
-      - "${FRONTEND_PORT:-example_port}:80"
+      - "${FRONTEND_PORT}:80"
     depends_on:
-      - api
+      - backend
     restart: unless-stopped
     networks:
-      - example-network
+      - wardrobe-network
 
 volumes:
   postgres_data:
 
 networks:
-  example-network:
+  wardrobe-network:
     driver: bridge
