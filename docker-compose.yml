@@ -128,7 +128,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=http://localhost:${BACKEND_PORT}
+        - VITE_API_URL=http://backend:8000
     container_name: wardrobe-frontend
     ports:
       - "${FRONTEND_PORT}:80"
