@@ -120,12 +120,10 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        VITE_SERVICE_API_URL: ${FRONTEND_SERVICE_API_URL:-http://localhost:10520}
     ports:
       - "${FRONTEND_PORT:-10530}:80"
     depends_on:
-      backend:
+      service:
         condition: service_healthy
     restart: unless-stopped
     networks:
