@@ -135,6 +135,30 @@ services:
     networks:
       - wardrobe-network
 
+  integration-tests:
+    image: python:3.12-slim
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+    environment:
+      SERVICE_BASE_URL: http://service:8000
+      BACKEND_BASE_URL: http://backend:8000
+    command:
+      - sh
+      - -c
+      - |
+        pip install --no-cache-dir pytest requests &&
+        pytest -q testing/integration
+    depends_on:
+      backend:
+        condition: service_healthy
+      service:
+        condition: service_healthy
+    profiles: ["test"]
+    restart: "no"
+    networks:
+      - wardrobe-network
+
 volumes:
   postgres_data:
 
