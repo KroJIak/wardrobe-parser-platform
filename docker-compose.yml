@@ -75,6 +75,15 @@ services:
       IMAGE_PROXY_MAX_BYTES: ${IMAGE_PROXY_MAX_BYTES:-8000000}
       IMAGE_CACHE_MAX_AGE_SEC: ${IMAGE_CACHE_MAX_AGE_SEC:-86400}
       IMAGE_RATE_LIMIT_PER_MINUTE: ${IMAGE_RATE_LIMIT_PER_MINUTE:-120}
+      PRICING_BYBIT_RATE_AUTO_ENABLED: ${PRICING_BYBIT_RATE_AUTO_ENABLED:-true}
+      PRICING_BYBIT_RATE_CACHE_SEC: ${PRICING_BYBIT_RATE_CACHE_SEC:-300}
+      PRICING_BYBIT_RATE_TIMEOUT_SEC: ${PRICING_BYBIT_RATE_TIMEOUT_SEC:-12}
+      PRICING_BYBIT_FIAT: ${PRICING_BYBIT_FIAT:-RUB}
+      PRICING_BYBIT_ASSET: ${PRICING_BYBIT_ASSET:-USDT}
+      PRICING_BYBIT_ADS_LIMIT: ${PRICING_BYBIT_ADS_LIMIT:-60}
+      PRICING_BYBIT_BUCKET_STEP_USDT: ${PRICING_BYBIT_BUCKET_STEP_USDT:-50}
+      PRICING_BYBIT_BUCKET_MAX_USDT: ${PRICING_BYBIT_BUCKET_MAX_USDT:-5000}
+      PRICING_BYBIT_OUTLIER_MAX_DEVIATION_RATIO: ${PRICING_BYBIT_OUTLIER_MAX_DEVIATION_RATIO:-0.08}
     ports:
       - "${BACKEND_PORT:-10510}:8000"
     depends_on:
@@ -82,12 +91,45 @@ services:
         condition: service_healthy
       backend-db-init:
         condition: service_completed_successfully
+      service-db-init:
+        condition: service_completed_successfully
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - wardrobe-network
+
+  backend-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["python", "-m", "app.workers.bybit_rate_worker"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      SERVICE_BASE_URL: ${SERVICE_BASE_URL:-http://service:8000}
+      SERVICE_PROXY_CONNECT_TIMEOUT_SEC: ${SERVICE_PROXY_CONNECT_TIMEOUT_SEC:-10}
+      SERVICE_PROXY_READ_TIMEOUT_SEC: ${SERVICE_PROXY_READ_TIMEOUT_SEC:-120}
+      PRICING_BYBIT_RATE_AUTO_ENABLED: ${PRICING_BYBIT_RATE_AUTO_ENABLED:-true}
+      PRICING_BYBIT_RATE_CACHE_SEC: ${PRICING_BYBIT_RATE_CACHE_SEC:-300}
+      PRICING_BYBIT_RATE_TIMEOUT_SEC: ${PRICING_BYBIT_RATE_TIMEOUT_SEC:-12}
+      PRICING_BYBIT_FIAT: ${PRICING_BYBIT_FIAT:-RUB}
+      PRICING_BYBIT_ASSET: ${PRICING_BYBIT_ASSET:-USDT}
+      PRICING_BYBIT_ADS_LIMIT: ${PRICING_BYBIT_ADS_LIMIT:-60}
+      PRICING_BYBIT_BUCKET_STEP_USDT: ${PRICING_BYBIT_BUCKET_STEP_USDT:-50}
+      PRICING_BYBIT_BUCKET_MAX_USDT: ${PRICING_BYBIT_BUCKET_MAX_USDT:-5000}
+      PRICING_BYBIT_OUTLIER_MAX_DEVIATION_RATIO: ${PRICING_BYBIT_OUTLIER_MAX_DEVIATION_RATIO:-0.08}
+      PRICING_BYBIT_WORKER_INTERVAL_SEC: ${PRICING_BYBIT_WORKER_INTERVAL_SEC:-1800}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend-db-init:
+        condition: service_completed_successfully
+      service-db-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
     networks:
       - wardrobe-network
 
