@@ -1,26 +1,26 @@
 services:
   postgres:
     ports:
-      - "${POSTGRES_EXTERNAL_PORT:-10540}:5432"
+      - "${POSTGRES_EXTERNAL_PORT}:5432"
 
   backend:
     ports:
-      - "${BACKEND_EXTERNAL_PORT:-10510}:8000"
+      - "${BACKEND_EXTERNAL_PORT}:8000"
 
   service:
     ports:
-      - "${SERVICE_EXTERNAL_PORT:-10520}:8000"
+      - "${SERVICE_EXTERNAL_PORT}:8000"
 
   frontend:
     ports:
-      - "${FRONTEND_EXTERNAL_PORT:-10530}:80"
+      - "${FRONTEND_EXTERNAL_PORT}:80"
 
   db-admin:
     image: adminer:4
     environment:
       ADMINER_DEFAULT_SERVER: postgres
     ports:
-      - "${DB_ADMIN_EXTERNAL_PORT:-10550}:8080"
+      - "${DB_ADMIN_EXTERNAL_PORT}:8080"
     depends_on:
       postgres:
         condition: service_healthy
