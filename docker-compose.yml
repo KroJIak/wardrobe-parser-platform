@@ -7,27 +7,13 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-wardrobe}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "${POSTGRES_EXPOSE_PORT:-10540}:${POSTGRES_PORT:-5432}"
+    expose:
+      - "${POSTGRES_PORT:-5432}"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wardrobe} -d ${POSTGRES_DB:-wardrobe}"]
       interval: 5s
       timeout: 5s
       retries: 5
-    networks:
-      - wardrobe-network
-
-  db-admin:
-    image: adminer:4
-    environment:
-      ADMINER_DEFAULT_SERVER: postgres
-    ports:
-      - "${DB_ADMIN_PORT:-10550}:8080"
-    depends_on:
-      - postgres
-    restart: unless-stopped
-    networks:
-      - wardrobe-network
 
   backend-db-init:
     build:
@@ -42,8 +28,6 @@ services:
       postgres:
         condition: service_healthy
     restart: "no"
-    networks:
-      - wardrobe-network
 
   service-db-init:
     build:
@@ -58,8 +42,6 @@ services:
       postgres:
         condition: service_healthy
     restart: "no"
-    networks:
-      - wardrobe-network
 
   backend:
     build:
@@ -84,8 +66,8 @@ services:
       PRICING_BYBIT_BUCKET_STEP_USDT: ${PRICING_BYBIT_BUCKET_STEP_USDT:-50}
       PRICING_BYBIT_BUCKET_MAX_USDT: ${PRICING_BYBIT_BUCKET_MAX_USDT:-5000}
       PRICING_BYBIT_OUTLIER_MAX_DEVIATION_RATIO: ${PRICING_BYBIT_OUTLIER_MAX_DEVIATION_RATIO:-0.08}
-    ports:
-      - "${BACKEND_PORT:-10510}:8000"
+    expose:
+      - "8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -99,8 +81,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - wardrobe-network
 
   backend-worker:
     build:
@@ -130,8 +110,6 @@ services:
       service-db-init:
         condition: service_completed_successfully
     restart: unless-stopped
-    networks:
-      - wardrobe-network
 
   service:
     build:
@@ -189,54 +167,24 @@ services:
       service-db-init:
         condition: service_completed_successfully
     restart: unless-stopped
+    expose:
+      - "8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - wardrobe-network
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    ports:
-      - "${FRONTEND_PORT:-10530}:80"
+    expose:
+      - "80"
     depends_on:
       backend:
         condition: service_healthy
     restart: unless-stopped
-    networks:
-      - wardrobe-network
-
-  integration-tests:
-    image: python:3.12-slim
-    working_dir: /workspace
-    volumes:
-      - ./:/workspace
-    environment:
-      SERVICE_BASE_URL: http://service:8000
-      BACKEND_BASE_URL: http://backend:8000
-    command:
-      - sh
-      - -c
-      - |
-        pip install --no-cache-dir pytest requests &&
-        pytest -q testing/integration
-    depends_on:
-      backend:
-        condition: service_healthy
-      service:
-        condition: service_healthy
-    profiles: ["test"]
-    restart: "no"
-    networks:
-      - wardrobe-network
 
 volumes:
   postgres_data:
-
-networks:
-  wardrobe-network:
-    driver: bridge
