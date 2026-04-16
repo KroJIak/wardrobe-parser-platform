@@ -15,6 +15,19 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   backend-db-init:
     build:
       context: ./backend
@@ -56,6 +69,8 @@ services:
       IMAGE_PROXY_TIMEOUT_SEC: ${IMAGE_PROXY_TIMEOUT_SEC:-10}
       IMAGE_PROXY_MAX_BYTES: ${IMAGE_PROXY_MAX_BYTES:-8000000}
       IMAGE_CACHE_MAX_AGE_SEC: ${IMAGE_CACHE_MAX_AGE_SEC:-86400}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      IMAGE_CACHE_REDIS_TTL_SEC: ${IMAGE_CACHE_REDIS_TTL_SEC:-259200}
       IMAGE_RATE_LIMIT_PER_MINUTE: ${IMAGE_RATE_LIMIT_PER_MINUTE:-120}
       PRICING_BYBIT_RATE_AUTO_ENABLED: ${PRICING_BYBIT_RATE_AUTO_ENABLED:-true}
       PRICING_BYBIT_RATE_CACHE_SEC: ${PRICING_BYBIT_RATE_CACHE_SEC:-300}
@@ -70,6 +85,8 @@ services:
       - "8000"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       backend-db-init:
         condition: service_completed_successfully
@@ -188,3 +205,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
