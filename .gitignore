@@ -50,3 +50,6 @@ testing/
 
 # Obsidian
 .obsidian/
+
+# Codex
+.codex
