@@ -149,6 +149,7 @@ services:
     expose:
       - "8000"
     volumes:
+      - ./service/config:/app/config
       - ./service/reports:/app/reports
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
