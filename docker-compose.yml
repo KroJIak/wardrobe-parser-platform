@@ -98,6 +98,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      backend-db-init:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -127,6 +129,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      backend-db-init:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   service:
