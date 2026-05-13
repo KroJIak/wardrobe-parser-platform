@@ -41,7 +41,7 @@ services:
       ADMIN_ACCESS_TOKEN_TTL_SEC: ${ADMIN_ACCESS_TOKEN_TTL_SEC:-86400}
       ADMIN_REFRESH_TOKEN_TTL_SEC: ${ADMIN_REFRESH_TOKEN_TTL_SEC:-604800}
       ADMIN_TOKEN_SECRET: ${ADMIN_TOKEN_SECRET}
-    command: ["sh", "-c", "echo 'backend-db-init skipped in clean rework mode'"]
+    command: ["sh", "-c", "alembic upgrade head"]
     depends_on:
       postgres:
         condition: service_healthy
