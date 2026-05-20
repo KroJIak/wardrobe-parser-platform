@@ -20,7 +20,7 @@ services:
     environment:
       ADMINER_DEFAULT_SERVER: postgres
     ports:
-      - "${DB_ADMIN_EXTERNAL_PORT}:8080"
+      - "${DB_ADMIN_EXTERNAL_PORT}:8085"
     depends_on:
       postgres:
         condition: service_healthy
