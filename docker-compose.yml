@@ -34,7 +34,7 @@ services:
       dockerfile: Dockerfile
     working_dir: /app
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wardrobe}:${POSTGRES_PASSWORD:-wardrobe_password}@${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB:-wardrobe}
       PYTHONPATH: /app
       ADMIN_SUPERUSER_LOGIN: ${ADMIN_SUPERUSER_LOGIN}
       ADMIN_SUPERUSER_PASSWORD: ${ADMIN_SUPERUSER_PASSWORD}
@@ -53,7 +53,7 @@ services:
       dockerfile: Dockerfile
     working_dir: /app
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wardrobe}:${POSTGRES_PASSWORD:-wardrobe_password}@${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB:-wardrobe}
       PYTHONPATH: /app
     command: ["sh", "-c", "echo 'service-db-init skipped: no alembic migrations in service module'"]
     depends_on:
@@ -66,7 +66,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wardrobe}:${POSTGRES_PASSWORD:-wardrobe_password}@${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB:-wardrobe}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
       SERVICE_BASE_URL: ${SERVICE_BASE_URL:-http://service:8000}
       SERVICE_PROXY_CONNECT_TIMEOUT_SEC: ${SERVICE_PROXY_CONNECT_TIMEOUT_SEC:-10}
@@ -116,7 +116,7 @@ services:
       dockerfile: Dockerfile
     command: ["python", "-m", "app.workers.bybit_rate_worker"]
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wardrobe}:${POSTGRES_PASSWORD:-wardrobe_password}@${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB:-wardrobe}
       PRICING_BYBIT_RATE_AUTO_ENABLED: ${PRICING_BYBIT_RATE_AUTO_ENABLED:-true}
       PRICING_BYBIT_RATE_CACHE_SEC: ${PRICING_BYBIT_RATE_CACHE_SEC:-300}
       PRICING_BYBIT_RATE_TIMEOUT_SEC: ${PRICING_BYBIT_RATE_TIMEOUT_SEC:-12}
@@ -139,7 +139,7 @@ services:
       context: ./service
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wardrobe}:${POSTGRES_PASSWORD:-wardrobe_password}@${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB:-wardrobe}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
       BACKEND_BASE_URL: http://backend:8000
       REPORTS_ROOT: /app/reports/runs
