@@ -10,6 +10,8 @@ services:
   service:
     ports:
       - "${SERVICE_EXTERNAL_PORT}:8000"
+    volumes:
+      - ./service/config:/app/config
 
   frontend:
     ports:
