@@ -155,10 +155,25 @@ services:
       timeout: 5s
       retries: 5
 
-  frontend:
+  frontend-site:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        FRONTEND_APP: site
+    expose:
+      - "80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend-admin:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        FRONTEND_APP: admin
     expose:
       - "80"
     depends_on:
