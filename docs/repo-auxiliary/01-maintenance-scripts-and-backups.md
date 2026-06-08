@@ -5,6 +5,16 @@
 - Охватывает: сохраненные служебные скрипты и сохраненные backup artifacts.
 - НЕ охватывает: normal runtime migration flow или deployed backup automation.
 
+## Корневые orchestration-артефакты
+
+В корне репозитория лежат файлы, которые не являются runtime-кодом доменов, но задают рабочую форму проекта:
+
+- `.gitmodules` фиксирует, что `backend`, `frontend` и `service` подключены как отдельные Git submodule
+- `.env.example` задает локальный baseline для compose-портов и основных переменных окружения
+- `README.md` — краткий root-level descriptor orchestration-репозитория
+
+Эти файлы не исполняют бизнес-логику сами по себе, но являются частью фактической bootstrap-поверхности проекта.
+
 ## Поверхность служебных скриптов
 
 ### `backend/scripts/reset_category_tree.py`
@@ -40,4 +50,4 @@
 ## Текущая граница
 
 - runtime backup priorities и persistence rules по-прежнему документируются в `infra-design/03-operations-and-secrets.md`
-- этот файл добавляет факт со стороны репозитория: dumps и maintenance scripts уже существуют в дереве проекта
+- этот файл добавляет факт со стороны репозитория: dumps, orchestration-root bootstrap files и maintenance scripts уже существуют в дереве проекта

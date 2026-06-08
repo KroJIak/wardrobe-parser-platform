@@ -8,7 +8,7 @@
 |---|---|---|---|
 | `key` | `string` | да | source key со стороны service; manual source использует `__manual_admin_source__` |
 | `source_id` | `int \| null` | нет | `parser_source.id` backend при наличии mapping |
-| `service_source_id` | `int` | нет | file-backed id parser-service; отсутствует во shared-type frontend, но возвращается backend |
+| `service_source_id` | `int` | нет | file-backed id parser-service; для manual source всегда `0` |
 | `name` | `string` | да | display name backend или fallback key |
 | `base_url` | `string` | да | base URL источника |
 | `parser_type` | `string` | да | `parser` или `backend_manual` |
@@ -35,8 +35,8 @@
 | `is_auto_ingest` | `bool \| null` | нет | производное от mode конфигурации service |
 | `is_personal` | `bool` | да | маркер manual catalog source |
 | `supplier_id` | `int \| null` | нет | relation supplier backend |
-| `supplier_key` | `string \| null` | нет | присутствует во frontend type, выводится в backend read paths при наличии |
-| `supplier_name` | `string \| null` | нет | присутствует во frontend type, выводится в backend read paths при наличии |
+| `supplier_key` | `string \| null` | нет | key назначенного supplier |
+| `supplier_name` | `string \| null` | нет | display name назначенного supplier |
 | `promo_factor` | `float` | да | promo factor уровня source |
 | `promo_only_no_discount` | `bool` | да | source promo policy |
 | `buyout_surcharge_value` | `float` | да | surcharge выкупа для source |
@@ -70,9 +70,10 @@
 | `sync_enabled` | `sync_enabled` | service-backed | `sync_enabled` | не хранится в `parser_source` |
 | поля `currency_*` | те же имена | выводятся из `config.shopify_currency` service | вложенный `config` | не хранятся в `parser_source` |
 | `enabled` | `enabled` | authority profile backend | file flag может существовать отдельно | `parser_source.enabled` |
-| `is_personal` | `is_personal` | sentinel manual source | n/a | row manual source в `parser_source` |
+| `is_personal` | `is_personal` | sentinel manual source | n/a | реальная row `parser_source` только если manual source уже материализован |
 
 ## Текущие особые случаи
-- Manual catalog source синтезируется backend и хранится как обычная row `parser_source` с URL `manual://admin/products`.
+- Manual source всегда присутствует в `/sources`, но может быть виртуальным и не иметь строки в `parser_source` до первого назначения supplier.
+- Материализация manual source происходит при `PATCH /sources/__manual_admin_source__/supplier`.
 - `categories_count`, `notes` и `status_label` сейчас являются placeholders в mapping backend.
 - `sync_enabled` для manual source виден в UI, но функционально не изменяется.

@@ -9,11 +9,13 @@
 3. `service` — специализированный рантайм парсера для sync и probe-задач.
 4. `postgres` и `redis` предоставляют общее постоянное хранилище и поддержку рантайма.
 
+На уровне репозитория эта форма собирается в orchestration-root, который подключает три submodule: `backend`, `frontend` и `service`.
+
 ## Технологический стек
 
 | Слой | Выбор | Почему |
 |------|-------|--------|
-| Web frontend | React + TypeScript + Vite + nginx | быстрый SPA-рантайм с отдельными admin/site-сборками |
+| Web frontend | React + TypeScript + Vite + nginx | один web-workspace с полным admin SPA и отдельной минимальной site-сборкой |
 | Backend API | FastAPI + Pydantic + SQLAlchemy | типизированный HTTP-слой и явные границы repository/service |
 | Parser runtime | FastAPI + Python + Node + Chromium + Xvfb | поддержка и HTTP-оркестрации, и browser-driven extraction flow |
 | Primary database | PostgreSQL | общий реляционный источник истины |
@@ -42,7 +44,7 @@ Alembic revisions лежат в `backend/alembic`, а `backend-db-init` нака
 ### Две frontend-точки входа в одном web-модуле
 
 Веб-слой разделен на `admin` и `site` entrypoint, но оба собираются из одного репозитория
-и одного Vite workspace. Это сохраняет общий UI/runtime-код и при этом оставляет независимые deployment targets.
+и одного Vite workspace. В текущем inspected runtime `admin` сохраняет полный showcase/catalog/control flow, а `site` сведен к отдельной изолированной landing-странице `be monki`. Это оставляет независимые deployment targets без разрыва frontend-репозитория.
 
 ### Файловый реестр источников парсера
 
@@ -146,6 +148,7 @@ Hosted и local deployment используют один и тот же набо
 - parser-service jobs хранят runtime state process-local, а не DB-backed
 - source ownership split между file-backed parser config и DB-backed backend metadata
 - latent DB dependencies существуют в parser service environment без active documented DB write path
+- `site` и `admin` разделены по runtime и bundle, но по-прежнему собираются из одного frontend-module и используют один и тот же nginx pattern для `/api` proxy
 
 ## Карта чтения
 

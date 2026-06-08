@@ -1,20 +1,19 @@
 # Проектирование фронтенда: точки входа приложений и маршрутизация
 
 ## Охват
-- Охватывает: `apps/admin`, `apps/site`, React-точки входа, активные деревья маршрутизации, поток защищенных маршрутов, структуры смонтированных и несмонтированных страниц.
+- Охватывает: `apps/admin`, `apps/site`, React-точки входа, активные деревья маршрутизации, поток защищенных маршрутов, структуры смонтированных страниц.
 - Не охватывает: детальные внутренности auth transport или контракты мутаций provider.
-- Зависит от: `apps/*/main.tsx`, `src/admin/admin-app.tsx`, `src/site/site-app.tsx`.
+- Зависит от: `apps/*/main.tsx`, `src/admin/admin-app.tsx`, `src/site/site-app.tsx`, `src/admin/admin-showcase-layout.tsx`.
 
 ## Разделение точек входа
 Репозиторий содержит две верхнеуровневые браузерные точки входа:
 
-| Сборка | Файл | Монтируемое приложение |
-|---|---|---|
-| `admin` | `apps/admin/main.tsx` | `AdminApp` |
-| `site` | `apps/site/main.tsx` | `SiteApp` |
+| Сборка | Файл | Монтируемое приложение | CSS |
+|---|---|---|---|
+| `admin` | `apps/admin/main.tsx` | `AdminApp` | `src/styles.css` |
+| `site` | `apps/site/main.tsx` | `SiteApp` | `src/site/site.css` |
 
 Обе точки входа:
-- импортируют `../../src/styles.css`
 - создают React root через `ReactDOM.createRoot(...)`
 - оборачивают приложение в `React.StrictMode`
 
@@ -26,10 +25,14 @@
 ### Таблица admin-маршрутов
 | Путь | Поведение |
 |---|---|
-| `/` | перенаправляет на `/login` или `/control/products` в зависимости от сессии |
-| `/login` | рендерит login-form |
+| `/` | showcase home внутри `AdminShowcaseLayout` |
+| `/catalog` | showcase home внутри `AdminShowcaseLayout` |
+| `/catalog/:slug` | showcase category page |
+| `/category/:slug` | showcase category page |
+| `/product/:id` | showcase product page |
+| `/login` | login form |
 | `/control` | перенаправляет на `/control/products` |
-| `/control/:tab` | рендерит admin-shell |
+| `/control/:tab` | admin-shell вкладок |
 | `*` | перенаправляет обратно на `/` |
 
 ### Поддерживаемые ключи вкладок
@@ -54,25 +57,24 @@
 ### Поведение guard-слоя
 - При первом входе на маршрут `AdminRoutes` блокирует рендеринг с помощью `authChecking`.
 - Если проверка сессии не проходит и маршрут не равен `/login`, пользователь перенаправляется на `/login`.
-- Если проверка сессии проходит, а пользователь находится на `/login` или `/`, он перенаправляется на admin-вкладку по умолчанию.
+- Если проверка сессии проходит, а пользователь находится на `/login`, он перенаправляется на `/control/products`.
 
 ### Граница provider
-`LiveDataProvider` оборачивает только маршруты вне login:
-- `/login` работает без provider-state
-- `/control/:tab` работает внутри `LiveDataProvider`
+`LiveDataProvider` оборачивает все admin-маршруты кроме `/login`:
+- showcase `/`, `/catalog`, `/category/:slug`, `/product/:id`
+- `control`-вкладки
 
-Это удерживает login-маршрут компактным и не позволяет запускать bootstrap admin-данных до появления доступа к сессии.
+Это означает, что даже user-facing showcase pages на хосте admin работают внутри того же data-provider, что и operational tabs.
 
 ## Обертки admin-shell
 Дерево admin-маршрутов также включает:
 - `RouteTitleSync`
-  - `/login` -> заголовок документа `Вход | Anton Shell Admin`
-  - любой другой admin-маршрут -> `Anton Shell Admin`
+  - `/login` -> `Вход | Anton Shell Admin`
+  - все остальные admin-маршруты -> `Anton Shell Admin`
 - `RouteTransitionIndicator`
   - временную полоску прогресса при смене `pathname`
 - `AdminErrorBoundary`
   - перехватывает ошибки рендера вокруг `AdminPage`
-  - показывает fallback-card, если admin-shell падает во время рендера
 
 ## Модель экранов admin-shell
 `/control/:tab` не создает отдельный маршрут на каждую бизнес-фичу. Вместо этого:
@@ -80,57 +82,37 @@
 - `AdminPage` читает `tab` из параметров маршрутизатора
 - `AdminTabContent` переключает feature-вкладки внутри страницы
 
-Это shell на базе вкладок с выбором активной вкладки через route, а не полностью route-segmented admin-приложение.
+Это shell на базе вкладок с выбором активной вкладки через route.
+
+## Showcase-слой внутри admin
+Маршруты `/`, `/catalog`, `/category/:slug` и `/product/:id` рендерятся через `AdminShowcaseLayout`.
+
+`AdminShowcaseLayout`:
+- использует общий `SiteHeader`
+- показывает CTA-переход либо в `/control/products`, либо обратно в `/`
+- содержит logout action
+- рендерит дочерний showcase route в `<Outlet />`
+
+То есть текущая витрина и product pages остаются частью `admin` deployment, а не отдельного `site`.
 
 ## Дерево site-рантайма
 Активный `SiteApp` сейчас:
 - не монтирует `BrowserRouter`
 - не монтирует `LiveDataProvider`
 - устанавливает `document.title = "Anton Shell"` в `useEffect`
-- рендерит:
+- рендерит `SiteHomePage`
+
+`SiteHomePage` рендерит:
 
 ```tsx
-<main className="site-placeholder-shell">
-  <p className="site-placeholder-copy">be monki</p>
+<main className="site-page">
+  <h1 className="site-page__title">be monki</h1>
 </main>
 ```
 
-В текущем смонтированном рантайме активные site-маршруты отсутствуют.
-
-## Спящая модель site-маршрутов, присутствующая в исходниках
-Дерево исходников по-прежнему содержит более богатый набор site-страниц:
-- `src/site/layout.tsx`
-- `src/site/home-page.tsx`
-- `src/site/category-page.tsx`
-- `src/site/catalog-page.tsx`
-- `src/site/product-page.tsx`
-
-Этот код подразумевает модель маршрутов примерно следующего вида:
-- `/`
-- `/category/:slug`
-- `/product/:id`
-
-Однако этот маршрутизатор сейчас не монтируется из `SiteApp`. Файлы существуют, но в активной site-сборке остаются спящими.
-
-## Паттерн навигации к продукту между приложениями
-Навигация по продуктам в admin использует `useAdminProductNavigation()` для открытия:
-- `/product/:id?from=admin`
-
-Сгенерированный URL соответствует форме маршрута публичного сайта, а не admin-маршрута. Иными словами, admin feature-код при открытии карточки продукта рассчитан на переход к site-style product path.
-
-### Следствие для текущего смонтированного рантайма
-Активный маршрутизатор `admin` не определяет маршрут `/product/:id`.
-
-Поэтому текущее поведение на admin-host выглядит так:
-1. admin-код генерирует относительную навигацию на хосте к `/product/:id?from=admin`
-2. сопоставление маршрутов в `AdminApp` проваливается в wildcard route
-3. wildcard перенаправляет на `/`
-4. `/` сразу перенаправляет обратно на admin-вкладку по умолчанию
-
-Это означает, что намерение навигации присутствует в исходниках, но текущий смонтированный рантайм `admin` не рендерит отдельный product-route по этому пути.
+В текущем смонтированном `site`-рантайме активные маршруты отсутствуют.
 
 ## Практический итог
-- `admin` является routed SPA с auth-gate и bootstrap-подключением provider.
-- `site` сейчас представляет собой немаршрутизируемую страницу-заглушку.
-- Более богатые site-маршруты присутствуют в исходниках, но не входят в mounted-runtime.
-- Некоторые admin-взаимодействия уже предполагают будущую или параллельную структуру публичных product-маршрутов.
+- `admin` является routed SPA с auth-gate, showcase-слоем и bootstrap-подключением provider.
+- `site` представляет собой изолированную немаршрутизируемую страницу.
+- Публичные catalog/product URL сейчас живут на `admin` host, а не на `site`.

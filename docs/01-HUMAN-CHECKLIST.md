@@ -29,6 +29,7 @@
 | `SERVICE_EXTERNAL_PORT` | local override | локальный порт parser-service |
 | `SITE_FRONTEND_EXTERNAL_PORT` | local override | локальный порт site |
 | `ADMIN_FRONTEND_EXTERNAL_PORT` | local override | локальный порт admin |
+| `POSTGRES_EXTERNAL_PORT` | local override | локальный порт PostgreSQL |
 | `DB_ADMIN_EXTERNAL_PORT` | local override | порт Adminer |
 | `CORS_ALLOWED_ORIGINS` | backend, service | разрешенные browser origins |
 | `ADMIN_SUPERUSER_LOGIN` | backend | стартовый admin bootstrap |
@@ -61,6 +62,8 @@ POSTGRES_HOST=postgres
 
 Дополнительно локальная разработка монтирует `./service/config` в parser service,
 чтобы `config/sources.json` переживал перезапуски контейнера и оставался редактируемым из рабочей области.
+
+Это монтирование приходит именно из `docker-compose.override.yml`. Базовый `docker-compose.yml` не создает отдельный named volume для parser source registry: без override или отдельного hosted mount сервис работает с копией `config/sources.json`, зашитой в image/контейнерный filesystem.
 
 ## 3. Подготовить доступ в admin
 
@@ -100,8 +103,9 @@ Parser service владеет `config/sources.json` как durable source regist
 Перед эксплуатацией:
 
 1. Убедитесь, что файл существует по пути `service/config/sources.json`.
-2. Сохраните эту директорию как persistent storage в runtime.
-3. Считайте изменения source runtime configuration файловым состоянием parser-service.
+2. В local baseline убедитесь, что используется `docker-compose.override.yml`, где `./service/config` bind-mount'ится в контейнер.
+3. В hosted runtime добавьте отдельный persistent mount для этого пути вручную; базовый compose сам по себе его не создает.
+4. Считайте изменения source runtime configuration файловым состоянием parser-service.
 
 Не предполагается, что source configuration parser-service сейчас хранится в PostgreSQL.
 

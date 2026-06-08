@@ -11,7 +11,6 @@
 - runtime entrypoints для `backend`, `frontend` и `service`
 - `docker-compose.yml`, `docker-compose.override.yml` и `.env.example`
 - `testing/`
-- `service/reports/`
 - `backups/db/`
 - `backend/scripts/`
 
@@ -71,14 +70,12 @@
 
 - `backend/scripts/reset_category_tree.py`
 - checked-in DB dumps в `backups/db/`
-- checked-in parser diagnostic artifacts в `service/reports/`
 - top-level engineering workspace в `testing/`
 
 Проверенные подтверждения:
 
 - `backend/scripts/reset_category_tree.py`
 - `backups/db/*.dump`
-- `service/reports/*`
 - `testing/browser-parser/*`
 - `testing/dolcevitahub-lab/*`
 - `testing/manual_probe_*.py`
@@ -95,7 +92,6 @@
 
 - maintenance scripts
 - checked-in backups
-- parser diagnostic reports
 - testing/lab workspaces
 
 Менее детализированной остается **granularity**, а не само наличие покрытия:
@@ -150,7 +146,6 @@
 | Cross-domain contracts | Complete | `docs/api/*` |
 | Maintenance scripts | Complete | `docs/repo-auxiliary/01-maintenance-scripts-and-backups.md` |
 | Checked-in DB backups | Complete | `docs/repo-auxiliary/01-maintenance-scripts-and-backups.md` |
-| Checked-in parser reports | Complete | `docs/repo-auxiliary/02-testing-labs-and-diagnostics.md` |
 | Testing и lab workspace | Complete на структурном уровне | покрыт как grouped engineering workspace, а не per-file catalog |
 
 ## Финальный ответ

@@ -73,12 +73,19 @@ service/
 | Browser runtime | `chromium`, `xvfb` | browser-extension strategies |
 | Python app | `pip install -r requirements.txt` | FastAPI service и parser runtime |
 | Browser runner app | `npm ci --omit=dev` внутри `/app/browser_runner` | Node-helper для browser-based strategies |
+| Source registry seed | `COPY config ./config` | исходная копия `config/sources.json` внутри image |
 
 Команда контейнера:
 
 ```text
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
+
+## Реальная модель конфигурационного состояния в контейнере
+- Базовый image всегда содержит каталог `/app/config`, скопированный на этапе сборки.
+- Локальный `docker-compose.override.yml` bind-mount'ит `./service/config:/app/config`, поэтому изменения `PATCH /api/v1/sync/sources/{source_key}` переживают пересоздание контейнера, пока сохраняется рабочая директория.
+- Базовый `docker-compose.yml` отдельного persistent mount для `/app/config` не задает.
+- Следствие: без override или отдельного hosted volume/mount изменения source registry сохраняются только в writable layer конкретного контейнера.
 
 ## Активные зависимости среды выполнения по возможностям
 ### Обычный HTTP-parsing

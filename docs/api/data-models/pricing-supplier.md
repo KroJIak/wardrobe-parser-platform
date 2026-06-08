@@ -7,7 +7,7 @@
 | Поле | Тип | Обязательно | Описание |
 |---|---|---|---|
 | `id` | `int` | да | id supplier |
-| `key` | `string` | да | уникальный ключ supplier |
+| `key` | `string` | да | внутренний стабильный технический идентификатор supplier |
 | `name` | `string` | да | отображаемое имя |
 | `category` | `string` | да | см. `enums.md` |
 | `parent_supplier_id` | `int \| null` | нет | родитель для alt supplier |
@@ -47,8 +47,10 @@
 | `rub` | `rub` | `rub` | `rate_rub` |
 | `parent_supplier_id` | то же имя | то же имя | `parent_supplier_id` |
 | `category` | то же имя | то же имя | строковая колонка |
+| `key` | `key` | `key` | `parser_supplier.key` |
 
 ## Текущие ограничения
 - backend-ответ нормализует DB `rate_rub` в API-поле `rub`.
 - payload supplier в settings transfer использует `parent_supplier_key`, а не `parent_supplier_id`.
+- В обычном create-flow `key` не принимается от admin UI: backend сначала создает запись, затем назначает ей `key` по схеме `supplier-{id}`.
 - Значения category supplier задокументированы в [enums.md](/home/andrey-debian/Projects/wardrobe-parser-platform/docs/api/data-models/enums.md:1).

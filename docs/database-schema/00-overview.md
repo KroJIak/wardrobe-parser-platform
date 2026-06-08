@@ -6,7 +6,7 @@
 ## Контур владения миграциями
 - Инструмент миграций: Alembic в `backend/alembic`
 - Таблица версий: `alembic_version_backend`
-- Текущая inspected-линия revisions: от `0001_backend_init` до `0036_relax_legacy_image_asset_not_null`
+- Текущая inspected-линия revisions: от `0001_backend_init` до `0037_drop_legacy_shipping_rules`
 - Ownership в compose: `backend-db-init` выполняет `alembic upgrade head`; `service-db-init` является no-op
 
 ## Группы схемы
@@ -67,7 +67,7 @@ sites
 |---|---|---|
 | Parser catalog core | services sync/orchestration backend | наполняется событиями parser-service, сохраняется backend |
 | Категории и matches | services категорий backend | и ручные assignments, и вычисляемые indexes принадлежат backend |
-| Pricing и suppliers | services pricing/settings backend | backend seed'ит singleton defaults и rows tariffs SSR |
+| Pricing и suppliers | services pricing/settings backend | backend seed'ит singleton defaults и rows tariffs supplier shipping |
 | Weight rules | service weight-rule backend | parser-service потребляет public contract backend вместо прямого доступа к tables |
 | Admin auth | services auth/account backend | прямых external writers нет |
 | Sync runtime | orchestration jobs backend | отслеживает aggregate-view backend поверх jobs parser-service |
@@ -79,7 +79,7 @@ sites
 | Legacy ingest | `0001`, `0003`, `0004`, `0005`, `0006` | `sites`, `products`, `product_images` плюс size-поля и удаление `raw_data` |
 | Bootstrap parser core | `0002` | создает base tables supplier, source, parser product, category, pricing, weight, dedup, image asset |
 | Индексация категорий | `0007`, `0008`, `0009`, `0010` | keyword scope, ручные assignments, match snapshots, нормализация slug data |
-| Pricing и merchandising | `0011`, `0012`, `0013`, `0014`, `0021`, `0022` | thresholds designers, ranges supplier tariff, seeded canonical tariffs, nullable `jpy_to_usd_rate` |
+| Pricing и merchandising | `0011`, `0012`, `0013`, `0014`, `0021`, `0022`, `0037` | thresholds designers, ranges supplier tariff, seeded canonical tariffs, nullable `jpy_to_usd_rate`, затем удаление legacy `shipping_rules` |
 | Контроли curation продукта | `0016`, `0017`, `0018`, `0019`, `0025`, `0026`, `0027`, `0029`, `0030`, `0033`, `0034` | auto-hide flags, text/media overrides, brand mapping, source visibility flags, sync telemetry, origin variants, dedup snapshots, description visibility override |
 | Admin/runtime | `0020`, `0023`, `0024`, `0028`, `0031`, `0032` | split singleton admin UI, tables sync idempotency/runtime, tables RBAC, поля runtime auto-sync |
 | Выравнивание image asset | `0035`, `0036` | добавлены runtime-columns, при этом legacy image-columns остаются и частично nullable |

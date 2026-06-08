@@ -66,7 +66,7 @@ stack, deployment cadence и существенную часть state/UI infras
 
 ### Компромиссы
 
-- frontend все еще содержит shared/admin-heavy logic, не полностью изолированную от site source tree
+- frontend по-прежнему остается одним репозиторием и одним build-workspace, даже при раздельных runtime entrypoint
 - parser-service runtime остается process-local для job state
 - backend остается плотным orchestration center для нескольких business areas
 

@@ -1,38 +1,47 @@
 # Проектирование фронтенда: UI-стили и статические ассеты
 
 ## Охват
-- Охватывает: стратегию глобального CSS, общие UI-примитивы, icons, skeletons, brand assets, HTML-оболочки, поведение статической раздачи.
+- Охватывает: стратегию CSS, общие UI-примитивы, icons, skeletons, brand assets, HTML-оболочки, поведение статической раздачи.
 - Не охватывает: бизнес-логику или API orchestration.
-- Зависит от: `src/styles.css`, `src/shared/*`, `public/*`, `apps/*/index.html`, `nginx/nginx.conf`.
+- Зависит от: `src/styles.css`, `src/site/site.css`, `src/shared/*`, `public/*`, `apps/*/index.html`, `nginx/nginx.conf`.
 
 ## Стратегия стилизации
-Текущий frontend в основном оформляется через одну глобальную таблицу стилей:
-- `src/styles.css`
+Текущий frontend использует две разные таблицы стилей:
+- `src/styles.css` для `admin`
+- `src/site/site.css` для `site`
 
-Несмотря на то что Tailwind tooling настроен в Vite, активная реализация в основном опирается на вручную написанные CSS-классы, а не на utility-driven composition.
+Tailwind tooling настроен в Vite, но активная реализация в основном опирается на вручную написанный CSS-код.
 
-## Глобальная визуальная область
-`src/styles.css` стилизует сразу обе сборки:
-- placeholder-оболочку сайта
-- страницу login admin-приложения
-- topbar и общий shell
-- UI каталога
+## Глобальная визуальная область admin
+`src/styles.css` стилизует `admin`-сборку:
+- страницу login
+- topbar и showcase shell
+- `control` layout
+- UI каталога и product page
 - dedup-cards
 - формы, теги, pills, таблицы, кнопки
 - responsive-поведение для основных layouts
 - индикатор смены маршрута
 
-Разделения на CSS-modules или отдельные таблицы стилей по приложениям нет.
+## Отдельная визуальная область site
+`src/site/site.css` стилизует только `site`:
+- базовые `html`, `body`, `#root`
+- `.site-page`
+- `.site-page__title`
+
+Никакие admin-классы или admin-shell selectors в `site.css` не присутствуют.
 
 ## Базовая тема
-Характеристики текущей базовой темы:
-- светлый нейтральный фон (`#f6f6f6`)
-- темный текст (`#111111`)
-- sans-serif stack в стиле system/Helvetica
-- белые карточки с мягкими границами
-- сдержанное использование blue-gray accents в интерактивных состояниях
+`admin`:
+- светлый нейтральный фон
+- темный текст
+- sans-serif stack
+- карточки и tabular UI
 
-Заглушка сайта использует отдельный теплый gradient background и крупную uppercase-типографику для `be monki`.
+`site`:
+- теплый фон `#f6f1e8`
+- serif stack (`Georgia`, `Times New Roman`)
+- крупная типографика для `be monki`
 
 ## Общие UI-примитивы
 Общие переиспользуемые UI-элементы находятся в `src/shared/`:
@@ -44,7 +53,7 @@
 - `LatexBrand` / `LazyLatexBrand`
 - монохромные icon-components в `mono-icons.tsx`
 
-Эти примитивы используются и в admin-коде, и в спящем коде сайта.
+Практически эти примитивы сейчас в основном потребляются `admin`.
 
 ## Иконки
 Frontend использует два источника иконок:
@@ -61,15 +70,15 @@ Frontend использует два источника иконок:
 - pricing
 - weight
 - settings
-- панелей каталога и root-категорий
+- panels showcase/catalog
 - product-page
 
-Это сохраняет визуальную согласованность loading-state, хотя загрузкой данных управляют многие разные hooks.
+Они относятся к активному `admin`-рантайму; `site` их не использует.
 
 ## Типографика и рендеринг формул
 Для отображения pricing и брендов используются дополнительные render-слои:
 - KaTeX CSS импортируется в `src/admin/admin-page.tsx`
-- `LatexBrand` и `LazyLatexBrand` рендерят имена брендов через KaTeX-aware components
+- `LatexBrand` и `LazyLatexBrand` рендерят имена брендов
 - секции pricing formula переиспользуют admin-formatting helpers и рендеринг legend
 
 ## Статические ассеты
@@ -86,7 +95,7 @@ Frontend использует два источника иконок:
 - исходный title
 - root-node для монтирования
 
-Они не делают preload дополнительных ассетов и не добавляют app-specific orchestration скриптов за пределами `main.tsx`.
+Они не делают preload дополнительных ассетов и не добавляют app-specific orchestration скриптов.
 
 ## Поведение статической раздачи
 В контейнерном рантайме nginx:
@@ -99,9 +108,8 @@ Frontend использует два источника иконок:
 Это означает, что URL ассетов вроде `/logo_anton_shell.svg` раздаются nginx напрямую из собранного статического дерева.
 
 ## Текущая граница presentation-layer
-Presentation-layer во frontend технически общий для обоих приложений, но визуально сильнее ориентирован на:
-- полноценный admin UI
-- спящий, но уже стилизованный catalog/product site
-- текущую активную публичную homepage-заглушку
+Presentation-layer частично общий по ассетам и shared-components, но разделен по CSS:
+- `admin` использует большой глобальный stylesheet
+- `site` использует отдельный минимальный stylesheet
 
-Поэтому система стилизации шире, чем текущий mounted site-runtime, поскольку все еще несет CSS, необходимый для спящих catalog/product flows.
+Именно поэтому `site` сейчас визуально изолирован от admin без отдельного репозитория.

@@ -28,18 +28,14 @@ Endpoints:
 
 ## Сервис pricing
 `PricingSettingsService` - один из самых больших service modules в backend и выступает как:
-
-- слой CRUD pricing settings;
-- слой CRUD suppliers/tariffs;
-- service admin UI settings;
-- calculator price, используемый projections product/catalog;
-- surface integration external FX/market data.
-
-Это шире, чем узкий "settings service".
+- слой CRUD pricing settings
+- слой CRUD suppliers/tariffs
+- service admin UI settings
+- calculator price, используемый projections product/catalog
+- surface integration external FX/market data
 
 ### Обязанности pricing, используемые в product flows
 Когда products возвращаются admin или public callers, backend использует pricing settings для вычисления:
-
 - нормализации source price
 - final price
 - компонентов buyout/service surcharge
@@ -50,33 +46,49 @@ Endpoints:
 
 ## Владение suppliers и tariffs
 Suppliers хранятся в DB backend и используются:
+- responses pricing settings
+- назначением supplier source profile в `sources.py`
+- вычислением final price во время projection product
+- flows import/export настроек
 
-- responses pricing settings;
-- назначением supplier source profile в `sources.py`;
-- вычислением final price во время projection product;
-- bootstrap manual source, для которого требуется хотя бы одна строка supplier.
+### Source of truth для SSR
+Текущий runtime использует только `supplier.rates` из `parser_supplier_shipping_rate`.
 
-Если suppliers отсутствуют, создание synthetic manual source завершается ошибкой.
+Это означает:
+- legacy `shipping_rules` больше не участвуют в расчете SSR
+- fallback-логика по region tables удалена из runtime
+- если supplier не назначен или для него нет подходящего tariff range, pricing computation уходит в `manual_required`
+
+Коды причин в runtime:
+- `missing_supplier`
+- `missing_tariff`
+
+### Генерация supplier key
+В обычном create-flow admin UI не передает `key`.
+
+Backend:
+1. создает row supplier с временным `pending-*`
+2. делает `flush()`
+3. назначает финальный `key` по схеме `supplier-{id}`
+
+То есть `key` остается стабильным техническим идентификатором, но не формируется из названия и не задается пользователем из admin UI.
 
 ## Правила веса
 Поведение weight централизовано в `WeightRuleService`.
 
 Обязанности:
-
-- при необходимости seed default rules;
-- CRUD rules и keywords;
-- listing products, у которых отсутствует derived weight;
-- публикация parser-facing contract payload;
-- участие в pricing product через разрешение effective weight.
+- seed default rules при необходимости
+- CRUD rules и keywords
+- listing products, у которых отсутствует derived weight
+- публикация parser-facing contract payload
+- участие в pricing product через разрешение effective weight
 
 ### Генерация parser contract
 Оба endpoints:
-
 - `GET /settings/weight-rules/parser-contract`
 - `GET /public/parser-contract/weight-rules`
 
 строят одну и ту же форму payload:
-
 - normalized list rules `{weight_grams, keywords[]}`
 - deterministic revision hash из sorted rules
 
@@ -86,7 +98,6 @@ Public endpoint parser-contract не требует authentication и сущес
 Настройки admin UI сохраняются persistently и не ограничиваются cosmetic toggles.
 
 Наблюдаемое использование включает:
-
 - id asset image showcase hero
 - ids asset images showcase carousel
 - поля scheduling/runtime auto-sync
@@ -98,15 +109,11 @@ Public endpoint parser-contract не требует authentication и сущес
 `SettingsTransferService` владеет flows import/export/reset сразу для нескольких config domains.
 
 Текущая роль:
-
-- экспорт unified payload, охватывающего pricing, sources, categories, weight и зоны brand mapping;
-- import этих зон обратно в persistent state, контролируемое backend;
-- выполнение одного полного path reset для state configuration, принадлежащего backend.
-
-Этот service - cross-domain orchestrator для operational state, а не узкий serializer.
+- экспорт unified payload, охватывающего pricing, sources, categories, weight и зоны brand mapping
+- import этих зон обратно в persistent state, контролируемое backend
+- выполнение одного полного path reset для state configuration, принадлежащего backend
 
 ### Правила точности import/reset
-Текущее поведение уже и более opinionated, чем подразумевает high-level список routes:
 - `POST /settings/reset` не принимает selector payload и выполняет один полный path reset
 - reset очищает DB state, принадлежащий backend, но не возвращает `config/sources.json` parser-service к defaults
 - import patch'ит source settings, backed by parser-service, только когда live source service удается сопоставить по normalized host
@@ -114,11 +121,10 @@ Public endpoint parser-contract не требует authentication и сущес
 - payloads transfer переносят operational configuration, но не transient runtime state jobs/events
 
 ## Поведение ошибок и fallback
-Router settings содержит несколько defensive fallbacks:
-
-- ошибки загрузки weight rules могут возвращать empty lists вместо поломки UI;
-- генерация parser-contract откатывается к empty payload с logged exception;
-- listing products с missing weight также откатывается к empty list при failure.
+Router settings содержит defensive fallbacks:
+- ошибки загрузки weight rules могут возвращать empty lists вместо поломки UI
+- генерация parser-contract откатывается к empty payload с logged exception
+- listing products с missing weight также откатывается к empty list при failure
 
 Это сохраняет отзывчивость admin screens, но может маскировать operational problems, если logs не мониторятся.
 

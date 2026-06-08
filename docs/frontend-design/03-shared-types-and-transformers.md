@@ -3,7 +3,7 @@
 ## Охват
 - Охватывает: локальный слой TypeScript-моделей, frontend-типы по фичам, helper-функции форматирования, утилиты формирования полей, helpers для изображений и slug.
 - Не охватывает: инвентарь endpoint-ов или оркестрационный поток внутри provider.
-- Зависит от: `src/shared/live-data-types.ts`, `src/admin/admin-types.ts`, `src/admin/admin-formatters.ts`, `src/shared/utils.ts`, `src/shared/product-image.ts`, `src/site/catalog-helpers.ts`.
+- Зависит от: `src/shared/live-data-types.ts`, `src/admin/admin-types.ts`, `src/admin/admin-formatters.ts`, `src/shared/utils.ts`, `src/shared/product-image.ts`, `src/shared/external-links.ts`.
 
 ## Модель владения типами
 Frontend не импортирует сгенерированные контракты из backend-схем. Вместо этого он поддерживает вручную написанные локальные типы в двух основных группах:
@@ -13,11 +13,7 @@ Frontend не импортирует сгенерированные контра
 | `src/shared/live-data-types.ts` | cross-feature модели данных, используемые provider-state и API-hooks |
 | `src/admin/admin-types.ts` | draft-структуры, enums и производные UI-модели, специфичные для admin-view |
 
-Кроме того, внутри feature-файлов существуют payload-типы на уровне отдельных компонентов, например:
-- `AdminSourcesTab`
-- `AdminSettingsAccountsSection`
-- `CatalogPage`
-- `ProductPage`
+Кроме того, внутри feature-файлов существуют payload-типы на уровне отдельных компонентов.
 
 ## Основные семейства общих данных
 `src/shared/live-data-types.ts` содержит основные browser-модели, обращенные к домену:
@@ -55,36 +51,31 @@ Frontend не импортирует сгенерированные контра
 ## Канонические паттерны преобразований в текущем коде
 Хотя универсального слоя DTO-mapper нет, код постоянно выполняет локальные преобразования.
 
-### 1. Дерево admin-категорий -> дерево публичных категорий
+### 1. Дерево admin-категорий -> дерево view-модели
 В `LiveDataProvider` массив `AdminCategoryNode[]` преобразуется в `CategoryView[]` через:
 - фильтрацию до включенных корней
 - проекцию счетчиков и флагов
 - рекурсивное отсечение выключенных дочерних узлов
 
-### 2. Нормализация статуса продукта
-`src/site/catalog-helpers.ts` преобразует backend-строки статусов в UI-ориентированные корзины:
-- `available`
-- `out_of_stock`
-- запасной вариант `hidden`
-
-### 3. Формирование отображения валют и денег
+### 2. Формирование отображения валют и денег
 Helper-функции форматирования преобразуют числовые backend-поля в display-строки в нескольких местах:
 - `admin-formatters.ts`
-- `catalog-page.tsx`
-- `product-page.tsx`
 - `admin-sync-formatters.ts`
+- `admin-pricing-view-model.ts`
 
-### 4. Нормализация URL изображений
+### 3. Нормализация URL изображений
 `src/shared/product-image.ts`:
 - нормализует исходные URL изображений
 - добавляет provider-specific query params для оптимизации
 - выводит primary image продукта из `image_urls`
 
-### 5. Формирование slug
+### 4. Формирование slug
 `src/shared/utils.ts` экспортирует `toSlug()`, который:
 - транслитерирует кириллицу в ASCII
 - переводит строку в нижний регистр и удаляет неподдерживаемые символы
-- используется catalog-helper-ами как fallback-источник slug категории
+
+### 5. Нормализация внешних ссылок
+`src/shared/external-links.ts` приводит пользовательские и source URL к безопасной форме для открытия и предпросмотра.
 
 ## Типы UI-draft-слоя
 Логика admin-фич создает дополнительные структуры draft-слоя, которые не предназначены для точного зеркалирования backend-ответов:
@@ -102,18 +93,15 @@ Helper-функции форматирования преобразуют чис
 
 | Зона | Примеры |
 |---|---|
-| `src/shared/` | projection категорий, helpers для изображений, JSON-обертки API |
+| `src/shared/` | projection категорий, helpers для изображений, JSON-обертки API, нормализация внешних ссылок |
 | `src/admin/` | view-model для pricing example, sync-formatters, helpers для status badges |
-| `src/site/` | фильтры каталога, формирование статусов, mapping имен источников |
 | уровень отдельного компонента | modal-drafts, адаптация fetch-payload, display-formatting |
+
+У `site` сейчас нет собственного слоя данных или transformers beyond минимальный React render.
 
 ## Последствия текущей модели
 - Frontend можно быстро менять локально, потому что не требуется шаг генерации.
-- Одна и та же доменная сущность может существовать как:
-  - raw API shape
-  - provider shape
-  - draft form shape
-  - derived display model
+- Одна и та же доменная сущность может существовать как raw API shape, provider shape, draft form shape и derived display model.
 - Логика mapping-а явно присутствует в коде, но распределена по многим файлам.
 - Граница между каноническими данными и UI-derived state существует, но не закреплена отдельным contract-слоем.
 
@@ -124,8 +112,7 @@ Helper-функции форматирования преобразуют чис
 | `normalizeImageSourceUrl()` / `optimizeImageUrl()` | формирование URL изображений |
 | `getProductPrimaryImageUrl()` | вычисление первого изображения |
 | `toSlug()` | транслитерация и нормализация slug |
-| `normalizeProductStatus()` | нормализация статуса продукта для site UI |
-| `deriveStatusAfterUnhide()` | вывод видимого статуса по доступности variants |
+| `normalizeExternalUrl()` / `normalizeOptionalExternalUrl()` | приведение внешних ссылок к usable browser-виду |
 
 ## Практическое правило для feature-кода
 Feature-компоненты обычно потребляют общие типы напрямую, а затем накладывают поверх них локальные draft-модели. Отдельной границы пакетов вида `service DTO -> view model` нет; шаг преобразования происходит рядом с consuming hook или экраном.

@@ -82,7 +82,7 @@
 - валидирует положительный weight при создании
 
 Таблица продуктов без веса:
-- ссылается на продукты через `/product/:id`
+- ссылается на продукты через `/product/:id?from=admin`
 - использует и `IntersectionObserver`, и fallback на scroll threshold для дозагрузки строк
 
 ## Вкладка Settings

@@ -1,122 +1,97 @@
 # Проектирование фронтенда: admin shell и orchestration вкладок
 
 ## Охват
-- Охватывает: `AdminPage`, переключение вкладок, жизненный цикл shell, topbar, overlays, обработку toast-уведомлений, preload на уровне вкладок.
-- Не охватывает: детальное поведение products/categories/pricing внутри каждой вкладки.
-- Зависит от: `src/admin/admin-page.tsx`, `src/admin/admin-tab-content.tsx`, `src/admin/admin-tabs.tsx`, `src/admin/hooks/use-admin-*`.
+- Охватывает: только control-plane shell на маршрутах `/control/:tab` и orchestration внутри `AdminPage`.
+- Не охватывает: showcase/catalog/product маршруты, которые обслуживаются отдельным `AdminShowcaseLayout`.
+- Зависит от: `frontend/src/admin/admin-page.tsx`, `frontend/src/admin/admin-tab-content.tsx`, `frontend/src/admin/admin-tabs.tsx`, `frontend/src/admin/admin-topbar.tsx`, `frontend/src/admin/admin-head.tsx`, `frontend/src/admin/admin-overlays.tsx`, `frontend/src/admin/hooks/use-admin-*.ts*`.
 
-## Модель shell
-Admin-приложение представляет собой один routed shell, который переключает содержимое вкладок внутри одного page-компонента.
+## Граница shell
+Control-plane shell активен только на:
+- `/control/products`
+- `/control/dedup`
+- `/control/categories`
+- `/control/designers`
+- `/control/sources`
+- `/control/pricing`
+- `/control/weight`
+- `/control/settings`
 
-Основные shell-файлы:
-- `admin-app.tsx`
+Маршруты `/`, `/catalog/*`, `/category/*`, `/product/:id` в этот shell не входят.
+
+## Основные файлы shell
 - `admin-page.tsx`
-- `admin-tabs.tsx`
 - `admin-tab-content.tsx`
+- `admin-tabs.tsx`
 - `admin-topbar.tsx`
+- `admin-head.tsx`
 - `admin-overlays.tsx`
 
-## Ответственность `AdminPage`
-`AdminPage` является главным orchestration-компонентом активного frontend-runtime.
+## Роль `AdminPage`
+`AdminPage`:
+- читает `tab` из route params
+- валидирует его через `normalizeAdminTab()`
+- вызывает `useAdminPageLifecycle()` для canonical redirect и title
+- распаковывает основной объем state/actions из `useLiveData()`
+- собирает feature-local hooks
+- формирует props для `AdminTabContent`
+- держит toast/modal/image-zoom overlays
 
-Он отвечает за:
-- чтение активной вкладки из route-параметров
-- вызов `useLiveData()` и распаковку большей части provider-state и actions
-- создание feature-local hooks для:
-  - жизненного цикла вкладок
-  - фильтрации products table
-  - редактирования категорий
-  - dedup-взаимодействий
-  - pricing runtime и draft-состояний
-  - auto-save настроек source pricing
-  - управления sync
-  - import/export/reset настроек
-  - управления showcase media
-  - редактирования weight-rules
-  - brand mapping
-  - поведения modal для создания продукта
-- подключения overlays и toast stack
-- сборки props для `AdminTabContent`
+Это главный coordinator control-plane экрана.
 
-Тем самым `AdminPage` одновременно является и контейнером shell, и верхнеуровневым интегратором фич.
-
-## Поток выбора вкладки
+## Выбор вкладки
+Поток выбора выглядит так:
 1. `useParams()` читает `tab`
-2. `normalizeAdminTab()` валидирует его по известному набору вкладок
-3. `useAdminPageLifecycle()` перенаправляет некорректные вкладки на `/control/{normalized-tab}`
-4. `AdminTabs` рендерит strip вкладок
-5. `AdminTabContent` переключается по нормализованному ключу вкладки и рендерит нужный tab-компонент
+2. `normalizeAdminTab()` приводит его к допустимому ключу
+3. `useAdminPageLifecycle()` делает redirect на `/control/{normalized}`
+4. `AdminTabs` показывает row кнопок
+5. `AdminTabContent` рендерит конкретную вкладку через `if`-ветки
 
-Переключение реализовано явными условными ветками, а не через registration map или lazy route loader.
+## Preload при смене вкладки
+`useAdminTabPreload()` выполняет tab-specific загрузки:
+- `pricing` -> `ensurePricingLoaded(true)`
+- `settings` -> `ensureAdminUiLoaded(true)`
+- `weight` -> `ensureWeightLoaded()`
+- `dedup` -> `ensureDedupLoaded()`
+- `categories` -> `ensureCategoriesLoaded()`
+- `sources` -> `refreshSourcesOnly()` + `ensureAdminUiLoaded(true)`
+- `products` -> `refreshSourcesOnly()`
 
-## Политика preload для вкладок
-`useAdminTabPreload()` запускается при смене активной вкладки.
+Вкладки `designers` специального preload в этом hook не имеют.
 
-Текущее поведение preload:
-- `pricing` -> принудительно загружает pricing settings
-- `settings` -> принудительно загружает admin UI settings
-- `weight` -> загружает weight rules и продукты без веса
-- `dedup` -> загружает dedup candidates
-- `categories` -> загружает дерево категорий
-- `sources` -> загружает sources и admin UI settings
-- `products` -> refresh sources
+## Shell UI
+### `AdminTopbar`
+Переиспользует `SiteHeader` и показывает:
+- CTA `Каталог товаров` -> `/`
+- logout-кнопку
 
-Это означает, что сама активация вкладки уже является событием загрузки данных.
+### `AdminHead`
+Рендерит:
+- заголовок `Панель управления`
+- sync actions
+- кнопку создания товара
+- `SyncSummary`
 
-## Визуальная оболочка shell
-### Верхняя панель
-`AdminTopbar` переиспользует `SiteHeader` и предоставляет:
-- ссылку на `/`
-- кнопку logout
+### `AdminOverlays`
+Централизует:
+- `ToastStack`
+- `AdminProductCreateModal`
+- zoom modal для изображений
 
-Брендовый ассет в topbar использует тот же SVG, что и chrome публичного сайта.
-
-### Вкладки
-`AdminTabs` рендерит плоский ряд кнопок по константному списку `tabs`.
-
-### Секция head и метаданные
-`AdminHead` используется внутри `AdminPage` для shell-level metadata и summary display. Заголовок документа также устанавливается через `useAdminPageLifecycle()` и helper-функции на уровне маршрутов.
-
-## Слой оверлеев
-`AdminOverlays` централизует UI, который должен находиться вне tab-content:
-- toast stack
-- modal создания продукта
-- modal увеличенного изображения
-
-Это позволяет держать состояние модальных окон в `AdminPage`, но рендерить дерево overlays только один раз.
-
-## Модель toast-уведомлений
-Создание toast-уведомлений локализовано внутри shell:
-- `useToasts()` возвращает `pushToast`, `closeToast`, `pauseToast`, `resumeToast`
-- `AdminPage` создает один контроллер toast-уведомлений и передает его вниз
-- `AdminOverlays` рендерит `ToastStack`
-
-Большинство feature-hooks возвращают `{ ok, message }`, а shell уже сам решает, когда показывать это сообщение.
-
-## Кластеры feature-hooks, используемые shell
+## Используемые feature hooks
 | Hook | Роль |
 |---|---|
-| `useAdminSyncControls` | оборачивает действия запуска и отмены sync |
-| `useAdminSettingsTransfer` | управляет browser-потоком export/import/reset файлов |
-| `useAdminProductCreateMock` | orchestrates modal создания продукта |
-| `useAdminDedupActions` | держит состояние и dispatch действий dedup |
-| `useAdminCategories` | управляет состоянием редактора категорий и autosave |
-| `useAdminPricingRuntime` | обрабатывает pricing example и feedback от Bybit worker |
-| `useAdminSourcePricing` | ведет draft-state и отложенное сохранение source pricing |
-| `useAdminWeightRules` | управляет редактированием weight с debounce |
-| `useAdminBrandMapping` | загружает и сохраняет состояние вкладки designers |
-| `useAdminShowcase` | управляет upload и ordering для hero/carousel |
+| `useAdminSyncControls` | run/cancel sync |
+| `useAdminSettingsTransfer` | export/import/reset settings |
+| `useAdminProductCreateMock` | modal создания продукта |
+| `useAdminDedupActions` | merge/combine/reject/undo dedup flows |
+| `useAdminCategories` | category editor state и autosave |
+| `useAdminPricingRuntime` | pricing example и warnings |
+| `useAdminSourcePricing` | source pricing drafts и debounce-save |
+| `useAdminWeightRules` | weight drafts и debounce-save |
+| `useAdminBrandMapping` | designers tab state |
+| `useAdminShowcase` | hero/carousel media management |
 
-## Межфичевая связность
-Admin shell намеренно разделяет один provider и один page-level coordinator между всеми вкладками. В результате:
-- вкладки не изолированы как micro-frontends
-- shell-hooks часто зависят от provider-datasets из других feature-областей
-- одна мутация может инициировать refresh datasets, используемых несколькими вкладками
-
-Примеры:
-- dedup-actions обновляют products и categories
-- import/reset настроек обновляет sources, pricing, categories и weight
-- изменения pricing supplier обновляют и pricing, и sources
-
-## Ограничение shell
-Текущая архитектура предпочитает одну большую интегрированную control-plane-поверхность вместо маленьких независимо маршрутизируемых admin-страниц. Это уменьшает дублирование между страницами, но концентрирует большой объем orchestration внутри `AdminPage`.
+## Практический итог
+- `/control/:tab` остается одной большой интегрированной shell-поверхностью.
+- Showcase/catalog/product runtime живет в том же приложении, но вне этого shell.
+- Основная сложность сосредоточена в `AdminPage`, а не в маршрутизаторе или отдельном store на вкладку.

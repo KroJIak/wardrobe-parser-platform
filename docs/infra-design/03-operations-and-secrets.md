@@ -27,6 +27,8 @@
 | backend uploads | continuity product/showcase images |
 | parser `config/sources.json` | continuity parser source registry |
 
+Важная текущая деталь: для parser source registry это не named volume из базового compose, а отдельный mount, который operations должны обеспечить сами в hosted-среде.
+
 ## Проверки работоспособности и runtime
 
 Минимальные runtime-checks:

@@ -85,7 +85,7 @@ Concrete repositories в основном оборачивают один class 
 | Sync runtime | `jobs.py` | `SyncJobRuntime`, `SyncAppliedBatch` |
 
 ## Инвентарь миграций
-Проверенное число revisions: `36` файлов в `backend/alembic/versions`, от `0001_backend_init.py` до `0036_relax_legacy_image_asset_not_null.py`.
+Проверенное число revisions: `37` файлов в `backend/alembic/versions`, от `0001_backend_init.py` до `0037_drop_legacy_shipping_rules.py`.
 
 Наблюдаемые темы эволюции schema:
 

@@ -3,7 +3,7 @@
 ## Охват
 - Охватывает: вкладку products, паттерн навигации по product-card, поток ручного создания и редактирования продуктов, вкладку dedup, вкладку categories, дерево и редактор категорий, ручные привязки.
 - Не охватывает: sources, pricing, designers, weight, settings и управление учетными записями.
-- Зависит от: `src/admin/admin-products-tab.tsx`, `src/admin/admin-dedup-tab.tsx`, `src/admin/admin-categories-tab.tsx`, связанных hooks и модальных окон.
+- Зависит от: `src/admin/admin-products-tab.tsx`, `src/admin/admin-dedup-tab.tsx`, `src/admin/admin-categories-tab.tsx`, showcase routes и связанных hooks.
 
 ## Поверхность модерации продуктов
 Зона модерации продуктов сосредоточена вокруг вкладки `products`.
@@ -56,7 +56,7 @@
 - обычный клик -> `navigate("/product/:id?from=admin")`
 - средний клик / ctrl-click / cmd-click -> `window.open(...)`
 
-Эта форма навигации нацелена на product-route публичного сайта, а не на чисто admin-route.
+Этот маршрут сейчас является валидным admin showcase route и рендерится на том же `admin` host через `AdminShowcaseLayout`.
 
 ## Поверхность дедупликации
 Зона dedup сосредоточена вокруг `AdminDedupTab`.
@@ -137,7 +137,7 @@ Dedup-мутации вызывают действия provider:
 - `local`
 - `title`
 
-Нижележащие действия provider также принимают `status`, но основной поток category editor в исследованном UI напрямую использует только inputs для `local` и `title`.
+Нижележащие действия provider также принимают `status`, но основной поток category editor напрямую использует inputs для `local` и `title`.
 
 ## Общая роль в системе
 Эти три группы фич образуют ядро модерации во frontend:

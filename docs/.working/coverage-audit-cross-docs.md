@@ -62,9 +62,6 @@ Docs хорошо покрывают production/runtime platform, но пока 
 - backend maintenance script:
   - `backend/scripts/reset_category_tree.py:1-220`
 - parser diagnostic artifacts:
-  - `service/reports/essxnyc-js-fallback-reality-check.json`
-  - `service/reports/racerworldwide-product-reality-probe.json`
-  - и остальное содержимое `service/reports/*`
 - top-level exploratory/testing workspace:
   - `testing/browser-parser/docker-compose.yml`
   - `testing/dolcevitahub-lab/docker-compose.yml`
@@ -79,14 +76,13 @@ Docs хорошо покрывают production/runtime platform, но пока 
 
 - `backend/scripts/reset_category_tree.py` — это не просто заметка и не dead file. Он открывает DB session, удаляет не-system categories, пересоздает tree roots и seed-ит keywords, то есть это реальная maintenance/mutation surface.
 - `testing/` содержит дополнительные compose files, dry-run probes, parser audits и lab artifacts, которые реально используются для исследования и валидации repo.
-- `service/reports/` и `backups/db/` — это не runtime-code, но meaningful repository assets с операционным контекстом.
+- `backups/db/` — это не runtime-code, но meaningful repository assets с операционным контекстом.
 
 Точные doc refs, показывающие текущую границу:
 
 - `docs/00-MASTER-PLAN.md:13-21` определяет только пять system domains.
 - `docs/00-MASTER-PLAN.md:91-111` индексирует весь docs set и не включает repo-auxiliary/testing/backup materials.
 - `docs/backend-design/09-deployment-and-operations.md:8-22` покрывает только deployed topology.
-- `docs/parser-service-design/08-observability-reports-and-operational-limits.md:34-72` описывает runtime reports/events, но не checked-in artifacts `service/reports/*`.
 - `docs/infra-design/03-operations-and-secrets.md:47-55` описывает backup priorities, но не checked-in artifacts `backups/db/*.dump`, уже присутствующие в repo.
 
 Нужны ли правки docs?
@@ -99,7 +95,6 @@ Docs хорошо покрывают production/runtime platform, но пока 
 - добавить небольшой appendix или каталог repo-auxiliaries, который явно опишет:
   - maintenance scripts
   - testing/lab workspaces
-  - checked-in reports
   - checked-in backups и их статус/назначение
 
 ### Low: surface автоматической проверки присутствует только неявно, а не как first-class repo concern
@@ -172,7 +167,7 @@ Docs хорошо покрывают production/runtime platform, но пока 
 
 Это не блокирующие gaps, но именно здесь в “100% repo coverage” остается наибольшая неопределенность:
 
-- Я проверил существование и назначение `testing/*`, `service/reports/*` и `backups/db/*`, но не исполнял эти scripts и не десериализовал dump files.
+- Я проверил существование и назначение `testing/*` и `backups/db/*`, но не исполнял эти scripts и не десериализовал dump files.
 - Я делал выборочную проверку ключевых runtime entrypoints/configs/routers/services, а не перечитывал line-by-line каждую реализацию adapter.
 - Основной docs set выглядит внутренне согласованным, но repo-local supporting README могут все еще содержать небольшие historical drift, как mismatch alias `showcase.md`, отмеченный выше.
 
@@ -183,7 +178,7 @@ Docs хорошо покрывают production/runtime platform, но пока 
 - **“Полностью ли `docs/` описывает фактический deployed platform baseline?”**
   - **Да.**
 
-- **“Описывает ли `docs/` уже весь repository, включая maintenance scripts, lab tooling, reports, backups и verification assets?”**
+- **“Описывает ли `docs/` уже весь repository, включая maintenance scripts, lab tooling, backups и verification assets?”**
   - **Пока нет.**
 
 Недостающая часть — это не скрытая production subsystem. Это repo-adjacent engineering workspace вокруг платформы.

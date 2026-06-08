@@ -2,7 +2,7 @@
 
 ## Область применения
 
-- Охватывает: verification assets, exploratory workspaces, parser reports и diagnostic-материалы вне runtime, закоммиченные в repo.
+- Охватывает: verification assets, exploratory workspaces и diagnostic-материалы вне runtime, закоммиченные в repo.
 - НЕ охватывает: поведение deployed request flow.
 
 ## Инвентарь тестов
@@ -34,23 +34,22 @@
 - `testing/manual_probe_goat_product.py`
 - `testing/probe_sources_audit.py`
 - `testing/parser/*`
+- `testing/run_source_dryrun_with_logs.py`
+- `testing/run_goat_adapter_dryrun.py`
 
 Эти assets не являются shipped product, но являются активными project tools для probing, auditing и experimentation.
 
-## Диагностические отчеты парсера
+### Текущие группы материалов внутри `testing/`
 
-Репозиторий включает сохраненные parser diagnostic artifacts в `service/reports/`, включая:
-
-- reality checks
-- fallback checks
-- field-coverage checks
-- product probes
-- per-run reports в `service/reports/runs/*`
-
-Эти artifacts — свидетельство реальной parser investigation и validation work.
+| Группа | Примеры | Что это такое |
+|---|---|---|
+| Browser sandboxes | `testing/browser-parser/*`, `testing/dolcevitahub-lab/*` | изолированные compose/worker-стенды для browser-based parsing |
+| Manual product probes | `manual_probe_goat_product.py`, `manual_probe_vinted_product.py`, `manual_probe_store_backlash_product.py`, `manual_probe_intl_protocol_index.py` | ручные проверки отдельных storefront/product flows |
+| Parser tooling | `testing/parser/shopify_audit_runner.py`, `shopify_export_products.py`, `crawlee_shopify_benchmark.mjs`, `advanced-sitemap-parser/*` | утилиты и мини-проекты для исследования стратегий и качества парсинга |
+| Audit outputs | `probe_sources_report.json`, `probe_sources_report.md`, `*_probe.json` | сохраненные результаты разовых проверок |
+| Research notes | `testing/parser/*.md`, `testing/direct-image-flow-removal-plan.md`, `testing/image-flow-migration-plan.md` | инженерные заметки и планы рядом с экспериментами |
 
 ## Текущая интерпретация
 
-- `service/reports/*` — не runtime persistence layer
 - `testing/*` — не часть deployed platform topology
-- оба класса artifacts остаются first-class repository surfaces, важными при документировании всего проекта, а не только deployed baseline
+- это developer-side инженерная рабочая область, а не часть deployed platform topology

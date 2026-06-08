@@ -2,16 +2,16 @@
 
 ## Охват
 - Охватывает: `LiveDataProvider`, общие API-helpers, composed hooks, семантику refresh, polling, route-sensitive bootstrap, стратегию мутаций.
-- Не охватывает: layout отдельных admin-экранов или композицию public-site страниц.
+- Не охватывает: layout отдельных admin-экранов или минимальный `site`.
 - Зависит от: `src/shared/live-data-context.tsx`, `src/shared/api-client.ts`, `src/shared/hooks/*`.
 
 ## Модель доступа к данным
-Активное admin-приложение использует context-centered модель состояния:
+Активное `admin`-приложение использует context-centered модель состояния:
 - один верхнеуровневый `LiveDataProvider`
 - множество feature-specific hooks, собранных в этот provider
 - consumers читают state и actions через `useLiveData()`
 
-Это главный центр данных рантайма для admin-приложения вне login.
+Это главный центр данных рантайма для `admin` вне login.
 
 ## Слои fetch-доступа
 Frontend сейчас использует три стиля доступа к API.
@@ -20,9 +20,9 @@ Frontend сейчас использует три стиля доступа к A
 |---|---|---|
 | `authFetch()` | `src/shared/admin-auth.ts` | аутентифицированный transport с silent refresh |
 | `apiJson()` / `apiNoContent()` | `src/shared/api-client.ts` | типизированные helpers для JSON и no-content ответов |
-| raw `fetch()` | login и несколько site/admin feature-файлов | прямые вызовы там, где helpers не используются |
+| raw `fetch()` | login и несколько feature-файлов | прямые вызовы там, где helpers не используются |
 
-Предпочтительный общий путь проходит через `apiJson()` или `apiNoContent()` поверх `authFetch()`, однако прямые вызовы по-прежнему присутствуют в кодовой базе.
+Предпочтительный общий путь проходит через `apiJson()` или `apiNoContent()` поверх `authFetch()`.
 
 ## Поверхность состояния provider
 `LiveDataProvider` владеет следующими крупными группами состояния:
@@ -61,19 +61,19 @@ Hook хранит `lastRouteKindRef` и запускает ветку bootstrap 
 - `admin` -> `site`
 - `site` -> `admin`
 
-Он не повторяет bootstrap при каждом изменении `pathname` внутри одного и того же типа маршрута. Это означает:
+Это означает:
 - переключения admin-вкладок сами по себе не вызывают bootstrap повторно
-- preload на уровне вкладок обрабатывается в других местах, например через tab preload и focused refresh hooks
+- showcase-маршруты `admin` (`/`, `/catalog`, `/category/:slug`, `/product/:id`) попадают в ветку `site`, хотя работают внутри `admin` deployment
 
 Поведение:
-- на admin-маршрутах:
+- на `admin`-маршрутах:
   - всегда загружает latest job
   - при необходимости заранее загружает sources для `products`, `sources` и `pricing`
-- на site-маршрутах:
+- на маршрутах, классифицированных как `site`:
   - если маршрут совпадает с `/product/:id`, пропускает bootstrap sources
   - иначе загружает только sources
 
-В текущем смонтированном runtime эта route-sensitive ветка для `site` в основном спит, потому что `SiteApp` не монтирует provider.
+Это реальный текущий код, а не целевая идеальная модель.
 
 ## Основные операции refresh
 Provider экспортирует несколько форм refresh вместо одного глобального примитива invalidation:
@@ -134,16 +134,14 @@ Polling включен только тогда, когда маршрут нач
 - start/cancel sync
 - некоторые сценарии ручной работы с продуктами
 
-### Предварительная проверка перед запуском sync
+## Предварительная проверка перед запуском sync
 Запуск sync не является слепым `POST /jobs`.
 
 Текущее поведение provider перед стартом sync:
 1. делает `GET /jobs/latest`
 2. отказывается запускать sync локально, если latest job уже находится в `pending` или `in_progress`
 3. пытается выполнить `POST /jobs`
-4. интерпретирует backend `409` как отдельный конфликтный сценарий "job уже запущен где-то еще"
-
-Это часть текущего frontend-контракта orchestration, а не concern только backend-слоя.
+4. интерпретирует backend `409` как отдельный конфликтный сценарий
 
 ## Семантика загрузки продуктов
 Продукты загружаются с явной пагинацией:
@@ -167,4 +165,4 @@ Polling включен только тогда, когда маршрут нач
 - dispatch действий на уровне фич
 - часть локальной projection-логики
 
-Это делает его центральной точкой интеграции для активного admin-runtime.
+Это делает его центральной точкой интеграции для активного `admin`-runtime.

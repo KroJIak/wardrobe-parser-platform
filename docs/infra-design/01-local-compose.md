@@ -19,8 +19,8 @@
 | `backend` | основной API | `8000` |
 | `backend-worker` | worker обновления курса Bybit | n/a |
 | `service` | parser runtime | `8000` |
-| `frontend-site` | nginx-контейнер сайта | `80` |
-| `frontend-admin` | nginx-контейнер admin | `80` |
+| `frontend-site` | nginx-контейнер минимального public site | `80` |
+| `frontend-admin` | nginx-контейнер admin/showcase SPA | `80` |
 | `db-admin` | Adminer (только override) | `8085` |
 
 ## Порядок запуска
@@ -57,12 +57,14 @@
 | `backend_uploads` | backend | uploaded product и showcase assets |
 | `./service/config:/app/config` | parser service (override) | файловый реестр источников |
 
+Важно: bind mount для parser config существует только в `docker-compose.override.yml`. Если запускать только базовый `docker-compose.yml`, сервис будет работать с копией `config/sources.json`, попавшей в image на стадии сборки.
+
 ## Модель локальной маршрутизации
 
 ### Браузерный трафик
 
-- `frontend-site` отдает public site.
-- `frontend-admin` отдает admin UI.
+- `frontend-site` отдает изолированный минимальный site entrypoint.
+- `frontend-admin` отдает полный admin/showcase SPA.
 - оба proxy'ят `/api/` на `backend:8000`
 - оба наследуют nginx `client_max_body_size 100m`; это фактический предел размера request body для admin uploads, идущих через frontend containers
 
@@ -80,8 +82,8 @@
 |---------|----------|
 | backend | `GET /health` |
 | parser service | `GET /health` |
-| frontend-site | nginx отдает собранный static site |
-| frontend-admin | nginx отдает собранный admin SPA |
+| frontend-site | nginx отдает собранный минимальный site entrypoint |
+| frontend-admin | nginx отдает собранный admin/showcase SPA |
 
 Локальный baseline считается healthy, когда Compose stack поднят, backend возвращает `{"status":"ok"}`,
 parser service возвращает `{"status":"ok"}`, а оба frontend-порта отдают HTML.

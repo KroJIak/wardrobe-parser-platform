@@ -9,7 +9,6 @@
 - `database` хранит curated/admin/runtime-состояние, которым владеет `backend`.
 
 В состав директории входят:
-
 - канонические общие модели данных в `data-models/`
 - сквозное поведение auth и RBAC в `auth.md`
 - контракты взаимодействия между парами доменов в `protocols/`
@@ -43,10 +42,9 @@
 | Общие enums и state machines | `data-models/enums.md` | backend, parser-service | frontend, database |
 
 ## Документы протоколов
-
 | Протокол | Файл | Канал | Сводка |
 |---|---|---|---|
-| `frontend` ↔ `backend` | `protocols/frontend--backend.md` | same-origin REST | admin auth, административные операции, публичный каталог, showcase, гибридные product-routes |
+| `frontend` ↔ `backend` | `protocols/frontend--backend.md` | same-origin REST | admin auth, административные операции, showcase/catalog, гибридные product-routes |
 | `backend` ↔ `parser-service` | `protocols/backend--parser-service.md` | внутренний REST | зеркалирование реестра источников, sync jobs, probe jobs, event stream, получение weight-rules |
 | `backend` ↔ `database` | `protocols/backend--database.md` | SQLAlchemy / SQL | владение репозиториями, записи в таблицы, authority миграций |
 | `parser-service` ↔ `database` | `protocols/parser-service--database.md` | документированный non-contract | явная фиксация того, что активный inspected runtime не использует БД |
@@ -66,5 +64,5 @@
 - Backend является единственным авторитетным источником публичных и административных REST-контрактов.
 - Контракты parser-service узкие и ориентированы на sync: registry источников, orchestration jobs, probe jobs, event stream.
 - Frontend содержит рукописные TypeScript-зеркала payload backend; generated client отсутствует.
-- Несколько бизнес-представлений обогащаются backend во время чтения, а не хранятся напрямую в DB, особенно поля product, связанные с pricing, категориями и brand.
-- `frontend/src/site` содержит более богатые dormant site-flows, но активный runtime `site` сейчас рендерит только placeholder shell.
+- Public-style showcase/catalog/product endpoints backend сейчас активно потребляются admin showcase runtime.
+- `site` как отдельная сборка существует, но текущий mounted runtime ограничен одной страницей `be monki` и не использует catalog/showcase API.

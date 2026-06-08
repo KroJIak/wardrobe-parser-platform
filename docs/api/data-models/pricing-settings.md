@@ -23,12 +23,11 @@
 | `customs_fixed_rub` | `float` | да | фиксированное значение customs в RUB |
 | `shipping_alt_threshold_eur` | `float` | да | threshold для alt shipping |
 | `tax_rate` | `float` | да | tax rate |
-| `dedup_only_available_products` | `bool` | да | сохраненный флаг настройки для фильтрации dedup; текущая runtime-генерация candidates все еще фактически ведет себя как available-only независимо от этого флага |
+| `dedup_only_available_products` | `bool` | да | сохраненный флаг настройки для фильтрации dedup |
 | `show_product_description` | `bool` | да | toggle description для public/admin |
 | `svc_rules` | `array<object>` | да | rules SVC |
 | `insurance_rules` | `array<object>` | да | rules insurance |
 | `service_fee_rules` | `array<object>` | да | rules service fee |
-| `shipping_rules` | `object` | да | вложенные shipping tables country/mode |
 | `bybit_rate_status` | `string` | да | health worker Bybit |
 | `bybit_rate_warning` | `string \| null` | нет | текст warning Bybit |
 | `bybit_bucket_step_usdt` | `int` | да | шаг bucket |
@@ -60,9 +59,9 @@
 | `suppliers` | inline nested array | собранный response | joined из `parser_supplier` и rows rate |
 | `formula_*` | те же имена | вычисляется service pricing | не сохраняется в таблице |
 | `bybit_rate_*` | те же имена | собирается из provider/runtime | частично сохраняется (`bybit_bucket_rates`, `bybit_last_*`) |
-| `shipping_rules` | nested object | та же shape | JSON-column |
 
 ## Текущие ограничения
 - Этот response шире, чем сохраненная singleton-row, потому что включает runtime-состояние worker и derived text формулы.
 - `usd_to_rub` и `eur_to_rub` существуют в DB-model, но не входят в exposed response shape.
+- Legacy `shipping_rules` больше не являются частью runtime-контракта, схемы API и актуальной БД. Источник истины для SSR теперь только `suppliers[].rates`.
 - Subgraph suppliers задокументирован отдельно в [pricing-supplier.md](/home/andrey-debian/Projects/wardrobe-parser-platform/docs/api/data-models/pricing-supplier.md:1).
