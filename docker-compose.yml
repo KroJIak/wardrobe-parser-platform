@@ -47,20 +47,6 @@ services:
         condition: service_healthy
     restart: "no"
 
-  service-db-init:
-    build:
-      context: ./service
-      dockerfile: Dockerfile
-    working_dir: /app
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-wardrobe}:${POSTGRES_PASSWORD:-wardrobe_password}@${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB:-wardrobe}
-      PYTHONPATH: /app
-    command: ["sh", "-c", "echo 'service-db-init skipped: no alembic migrations in service module'"]
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: "no"
-
   backend:
     build:
       context: ./backend
@@ -139,13 +125,9 @@ services:
       context: ./service
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-wardrobe}:${POSTGRES_PASSWORD:-wardrobe_password}@${POSTGRES_HOST:-postgres}:5432/${POSTGRES_DB:-wardrobe}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
       BACKEND_BASE_URL: http://backend:8000
       SOURCES_CONFIG_PATH: /app/config/sources.json
-    depends_on:
-      postgres:
-        condition: service_healthy
     restart: unless-stopped
     expose:
       - "8000"
