@@ -10,31 +10,30 @@
 
 Канонический товар каталога.
 
-Это не source snapshot и не editorial override.
-Эта таблица хранит базовую бизнес-сущность товара, вокруг которой уже живут listing, override, изображения и таксономия.
+Это не source snapshot и не presentation-layer.
+Эта таблица хранит базовую бизнес-сущность товара, вокруг которой уже живут listing, presentation, изображения и таксономия.
 
 | Column | Type | Null | Meaning |
 |---|---|---:|---|
 | `id` | bigint | no | PK |
-| `designer_id` | bigint | yes | Канонический дизайнер |
+| `designer_id` | bigint | yes | Финальный публичный дизайнер |
+| `primary_listing_id` | bigint | yes | FK -> `product_listings.id`, какой member-listing дает товару базовые title/description |
 | `gender` | text enum | no | `male / female / unisex` |
-| `commercial_availability_mode` | text enum | no | `in_stock / by_order` |
-| `weight_grams` | integer | yes | Канонический вес |
-| `weight_source_kind` | text enum | yes | `source / rule / manual` |
-| `lifecycle_status` | text enum | no | `active / merged / deleted` |
+| `availability_mode` | text enum | no | `in_stock / by_order` |
+| `manual_weight_grams` | integer | yes | Ручной вес, если админ задал его явно |
+| `weight_rule_id` | bigint | yes | FK -> `weight_rules.id` |
+| `lifecycle_status` | text enum | no | `active / merged` |
 | `visibility_status` | text enum | no | `visible / hidden` |
 | `created_at` | timestamptz | no | Создан |
 | `updated_at` | timestamptz | no | Обновлен |
-| `deleted_at` | timestamptz | yes | Soft delete при необходимости |
 
 ### `product_listings`
 
-Карточка товара конкретного источника.
+Атомарная карточка товара конкретного источника.
 
 | Column | Type | Null | Meaning |
 |---|---|---:|---|
 | `id` | bigint | no | PK |
-| `product_id` | bigint | no | FK -> `products.id` |
 | `source_id` | bigint | no | FK -> `sources.id` |
 | `external_id` | text | yes | Внешний product id source |
 | `url` | text | no | Нормализованный source URL |
@@ -42,28 +41,54 @@
 | `source_title` | text | no | Базовое название listing |
 | `source_description_html` | text | yes | HTML-описание |
 | `source_description_text` | text | yes | Plain-text описание |
+| `source_weight_grams` | integer | yes | Вес, если его реально отдал источник |
 | `source_designer_raw` | text | yes | Сырой бренд источника |
 | `source_category_raw` | text | yes | Сырая category источника |
-| `source_orderability_status` | text enum | no | `orderable / sold_out / unavailable` |
+| `orderability_status` | text enum | no | `orderable / sold_out / unavailable` |
 | `status_reason` | text | yes | Причина недоступности |
 | `ingest_mode` | text enum | no | `sync / manual` |
-| `technical_source_profile_id` | bigint | yes | Вспомогательный technical profile для manual/special ingest |
-| `first_seen_at` | timestamptz | no | Первый импорт |
 | `last_seen_at` | timestamptz | no | Последний импорт |
 | `last_synced_at` | timestamptz | yes | Последний update listing |
-| `is_enabled` | boolean | no | Listing участвует в каталоге |
 | `created_at` | timestamptz | no | Создан |
 | `updated_at` | timestamptz | no | Обновлен |
 
 > [!important]
-> В новой модели базовые title/description живут только в `product_listings`.
+> В новой модели базовый snapshot title/description живет в `product_listings`.
 > `sync`-listing хранит тексты источника.
-> `manual`-listing хранит тексты, введенные админом.
+> `manual`-listing хранит базовые тексты, введенные админом.
+> Ручные text/html правки поверх этого snapshot живут в `product_presentation`.
 > Отдельного канонического дубля title/description в `products` больше нет.
 
 > [!important]
-> `source_orderability_status` не равен витринному `В наличии / Под заказ`.
-> `source_orderability_status` отвечает только на вопрос, можно ли сейчас купить товар у исходного продавца.
+> `product_listings` не принадлежат `products` напрямую через FK.
+> Их включение в витринный товар описывается отдельной таблицей `product_listing_members`.
+
+> [!important]
+> `orderability_status` не равен витринному `В наличии / Под заказ`.
+> `orderability_status` отвечает только на вопрос, можно ли сейчас купить товар у исходного продавца.
+
+> [!important]
+> В новой модели итоговый вес не хранится в `products` отдельным полем.
+> Правильная модель:
+> - `products.manual_weight_grams` хранит ручной вес;
+> - `product_listings.source_weight_grams` хранит source-вес, если источник его реально прислал.
+> - `products.weight_rule_id` фиксирует правило веса только когда у primary listing нет source-веса, а rule сработало.
+> - итоговый вес собирается как derived-значение при чтении.
+
+### `product_listing_members`
+
+Состав витринного товара из атомарных source-листингов.
+
+| Column | Type | Null | Meaning |
+|---|---|---:|---|
+| `product_id` | bigint | no | FK -> `products.id` |
+| `listing_id` | bigint | no | FK -> `product_listings.id` |
+
+> [!important]
+> Для активного витринного товара `products.primary_listing_id` обязан ссылаться на один из его member-listing.
+> При merge новый товар получает плоский union member-listing входных товаров без вложенных цепочек вида `AB + C`.
+> Один `listing_id` может принадлежать только одному текущему `product_id`.
+> При merge member-строки перепривязываются к новому товару, а входные товары остаются только как `lifecycle_status = merged`.
 
 ### `product_listing_variants`
 
@@ -92,23 +117,28 @@
 | `url` | text | no | Source image URL |
 | `created_at` | timestamptz | no | Создан |
 
-### `product_overrides`
+### `product_presentation`
 
-Editorial-слой поверх `products`, который можно отдельно сбрасывать без переписывания базового канонического товара.
+Слой представления товара поверх `products`, который можно отдельно менять без переписывания базового канонического товара.
 
 | Column | Type | Null | Meaning |
 |---|---|---:|---|
 | `product_id` | bigint | no | PK/FK -> `products.id` |
 | `title_override` | text | yes | Ручное название |
-| `description_override` | text | yes | Ручное описание |
-| `description_visibility_override` | boolean | yes | Показывать ли описание |
-| `force_visible` | boolean | no | Форс-переопределение auto-hide |
+| `description_text` | text | yes | Ручное текстовое описание |
+| `description_html` | text | yes | Ручное HTML-описание |
+| `description_visibility` | boolean | yes | Показывать ли описание |
 | `created_at` | timestamptz | no | Создан |
 | `updated_at` | timestamptz | no | Обновлен |
 
 > [!important]
-> `title_override` и `description_override` не являются “второй копией канонических полей”.
-> Это единственный ручной слой переопределения поверх базовых полей primary listing.
+> `title_override`, `description_text` и `description_html` не являются “второй копией канонических полей”.
+> Это единственный ручной слой поверх базовых полей primary listing.
+
+> [!important]
+> `description_text` и `description_html` живут независимо.
+> Админ может сначала изменить текстовую версию, а потом отдельно HTML-версию.
+> Обе должны сохраняться одновременно.
 
 ### `product_price_overrides`
 
@@ -130,23 +160,30 @@ Editorial-слой поверх `products`, который можно отдел
 > `manual_compare_at_price_rub` не является второй “текущей” ценой.
 > Это только зачеркнутая старая рублевая цена для витринного эффекта скидки.
 
-### `product_display_images`
+### `product_listing_gallery_images`
 
 | Column | Type | Null | Meaning |
 |---|---|---:|---|
 | `id` | bigint | no | PK |
 | `product_id` | bigint | no | FK -> `products.id` |
+| `listing_id` | bigint | no | FK -> `product_listings.id` |
 | `listing_image_id` | bigint | yes | FK -> `product_listing_images.id` |
 | `image_asset_id` | bigint | yes | FK -> `image_assets.id` |
-| `position` | integer | no | Итоговый порядок |
+| `position` | integer | no | Порядок внутри фото-стека выбранного listing |
 | `is_hidden` | boolean | no | Скрыто ли изображение |
 | `origin_kind` | text enum | no | `source_image / uploaded_asset` |
 | `created_at` | timestamptz | no | Создан |
 | `updated_at` | timestamptz | no | Обновлен |
 
 > [!important]
-> Если `listing_image_id` заполнен, он обязан ссылаться на изображение такого listing, который принадлежит тому же `product_id`.
-> То есть display-галерея товара не может ссылаться на source-image чужого товара.
+> Если `listing_image_id` заполнен, он обязан ссылаться на изображение того же `listing_id`.
+> Также `listing_id` обязан входить в состав `product_id` через `product_listing_members`.
+
+> [!important]
+> Эта модель специально различает два типа картинок в стеке конкретного member-listing:
+> - source images из `product_listing_images` нельзя физически удалять из source-layer, потому что sync потом снова их найдет;
+> - их можно только скрывать на уровне `product_listing_gallery_images.is_hidden`;
+> - вручную загруженные картинки с `origin_kind = uploaded_asset` можно удалять из display-стека.
 
 > [!warning]
 > В старой схеме поля вида `*_asset_ids` по имени обещали хранить IDs, но фактически местами содержали URL-строки.
@@ -160,9 +197,10 @@ Editorial-слой поверх `products`, который можно отдел
 | Column | Type | Null | Meaning |
 |---|---|---:|---|
 | `id` | bigint | no | PK |
-| `name` | text | no | Каноническое имя дизайнера |
-| `slug` | text | no | URL-friendly slug |
-| `is_enabled` | boolean | no | Дизайнер активен |
+| `name` | text | no | Финальное имя дизайнера в каталоге |
+| `slug` | text | no | URL дизайнера |
+| `description` | text | yes | Общее описание дизайнера |
+| `is_enabled` | boolean | no | Дизайнер активен в каталоге |
 | `created_at` | timestamptz | no | Создан |
 | `updated_at` | timestamptz | no | Обновлен |
 
@@ -173,135 +211,71 @@ Editorial-слой поверх `products`, который можно отдел
 | `id` | bigint | no | PK |
 | `designer_id` | bigint | yes | FK -> `designers.id` |
 | `source_name` | text | no | Исходный бренд источника |
-| `normalized_key` | text | no | Нормализованный ключ |
-| `include_in_directory` | boolean | no | Участвует ли в директории |
-| `created_at` | timestamptz | no | Создан |
-| `updated_at` | timestamptz | no | Обновлен |
-
-### `designer_pages`
-
-| Column | Type | Null | Meaning |
-|---|---|---:|---|
-| `id` | bigint | no | PK |
-| `designer_id` | bigint | no | FK -> `designers.id` |
-| `title` | text | no | Название страницы |
-| `description` | text | yes | Описание страницы |
-| `is_enabled` | boolean | no | Витринная активность |
 | `created_at` | timestamptz | no | Создан |
 | `updated_at` | timestamptz | no | Обновлен |
 
 ## 3. Taxonomy and showcase
 
-### `categories`
-
-Локальные категории товара.
-
-| Column | Type | Null | Meaning |
-|---|---|---:|---|
-| `id` | bigint | no | PK |
-| `slug` | text | no | Системный slug |
-| `name` | text | no | Внутреннее имя |
-| `display_name` | text | no | Имя для UI |
-| `is_enabled` | boolean | no | Активность |
-| `created_at` | timestamptz | no | Создан |
-| `updated_at` | timestamptz | no | Обновлен |
-
-### `category_nodes`
-
-Отдельная таблица дерева локальных категорий.
-
-| Column | Type | Null | Meaning |
-|---|---|---:|---|
-| `id` | bigint | no | PK |
-| `category_id` | bigint | no | FK -> `categories.id` |
-| `parent_node_id` | bigint | yes | FK -> `category_nodes.id` |
-| `position` | integer | no | Порядок внутри parent |
-
-### `category_keyword_rules`
-
-Ключевые слова автоклассификации локальных категорий.
-
-| Column | Type | Null | Meaning |
-|---|---|---:|---|
-| `id` | bigint | no | PK |
-| `category_id` | bigint | no | FK -> `categories.id` |
-| `keyword_kind` | text enum | no | `local_category / title` |
-| `keyword` | text | no | Ключевое слово |
-
-### `product_category_assignments`
-
-Связь товара с локальными категориями.
-
-| Column | Type | Null | Meaning |
-|---|---|---:|---|
-| `product_id` | bigint | no | FK -> `products.id` |
-| `category_id` | bigint | no | FK -> `categories.id` |
-| `assignment_kind` | text enum | no | `rule / manual_starred` |
-| `sort_order` | integer | yes | Порядок ручного приоритета |
-| `created_at` | timestamptz | no | Создан |
-| `updated_at` | timestamptz | no | Обновлен |
-
-### `catalog_filters`
+### `filters`
 
 Это справочник фильтров как бизнес-сущностей.
 
 | Column | Type | Null | Meaning |
 |---|---|---:|---|
 | `id` | bigint | no | PK |
-| `slug` | text | no | Системный slug |
-| `name` | text | no | Внутреннее имя |
-| `display_name` | text | no | Имя в витрине |
+| `title` | text | no | Основное имя фильтра |
+| `display_title` | text | yes | Optional override для витринного блока `Раздел` |
+| `slug` | text | no | Автогенерируемый технический slug |
 | `node_kind` | text enum | no | `filter / multifilter` |
 | `is_enabled` | boolean | no | Активность |
 | `created_at` | timestamptz | no | Создан |
 | `updated_at` | timestamptz | no | Обновлен |
 
-### `catalog_filter_rules`
+> `slug` не вводится админом вручную.
+> Он автоматически строится из `title` через transliteration + slugify и пересобирается при изменении `title`.
+> `display_title` опционален.
+> Если он пустой, в витринном блоке `Раздел` используется обычный `title`.
+> `node_kind` можно менять, но только если после изменения дерево остается валидным.
+> Узел `filter` не может иметь детей.
 
-Отдельная сущность rule-layer.
-Даже если у фильтра initially будет только один active rule-set, правило не должно растворяться в самой сущности фильтра.
-
-| Column | Type | Null | Meaning |
-|---|---|---:|---|
-| `id` | bigint | no | PK |
-| `filter_id` | bigint | no | FK -> `catalog_filters.id` |
-| `rule_kind` | text enum | no | `inclusion` |
-| `is_enabled` | boolean | no | Активность |
-| `created_at` | timestamptz | no | Создан |
-| `updated_at` | timestamptz | no | Обновлен |
-
-### `catalog_filter_nodes`
+### `filter_nodes`
 
 Отдельная таблица дерева.
 
 | Column | Type | Null | Meaning |
 |---|---|---:|---|
 | `id` | bigint | no | PK |
-| `filter_id` | bigint | no | FK -> `catalog_filters.id` |
-| `parent_node_id` | bigint | yes | FK -> `catalog_filter_nodes.id` |
+| `filter_id` | bigint | no | FK -> `filters.id` |
+| `parent_node_id` | bigint | yes | FK -> `filter_nodes.id` |
 | `position` | integer | no | Порядок внутри parent |
 
-### `catalog_filter_rule_local_category_keywords`
+> При смене `filters.node_kind` система должна проверять дерево до сохранения.
+> Нельзя сохранять структуру, где узел с `node_kind = filter` остается родителем других узлов.
+
+### `filter_local_category_keywords`
 
 | Column | Type | Null | Meaning |
 |---|---|---:|---|
 | `id` | bigint | no | PK |
-| `rule_id` | bigint | no | FK -> `catalog_filter_rules.id` |
-| `keyword` | text | no | Ключевое слово локальной категории |
+| `filter_id` | bigint | no | FK -> `filters.id` |
+| `keyword` | text | no | Ключевое слово local-category label |
 
-### `catalog_filter_rule_title_keywords`
+> Эти ключевые слова матчатся не с отдельной admin-managed таблицей категорий,
+> а с already normalized local-category labels у товара.
+
+### `filter_title_keywords`
 
 | Column | Type | Null | Meaning |
 |---|---|---:|---|
 | `id` | bigint | no | PK |
-| `rule_id` | bigint | no | FK -> `catalog_filter_rules.id` |
+| `filter_id` | bigint | no | FK -> `filters.id` |
 | `keyword` | text | no | Ключевое слово title |
 
-### `catalog_filter_rule_manual_products`
+### `filter_manual_products`
 
 | Column | Type | Null | Meaning |
 |---|---|---:|---|
-| `rule_id` | bigint | no | FK -> `catalog_filter_rules.id` |
+| `filter_id` | bigint | no | FK -> `filters.id` |
 | `product_id` | bigint | no | FK -> `products.id` |
 
 ### `custom_catalogs`
@@ -309,11 +283,15 @@ Editorial-слой поверх `products`, который можно отдел
 | Column | Type | Null | Meaning |
 |---|---|---:|---|
 | `id` | bigint | no | PK |
-| `slug` | text | no | Уникальный slug |
-| `name` | text | no | Имя каталога |
+| `title` | text | no | Основное имя каталога |
+| `description` | text | yes | Описание каталога для витрины |
+| `slug` | text | no | Автогенерируемый технический slug |
 | `is_enabled` | boolean | no | Виден ли каталог |
 | `created_at` | timestamptz | no | Создан |
 | `updated_at` | timestamptz | no | Обновлен |
+
+> `slug` не вводится админом вручную.
+> Он автоматически строится из `title` через transliteration + slugify и пересобирается при изменении `title`.
 
 ### `custom_catalog_products`
 
@@ -321,8 +299,6 @@ Editorial-слой поверх `products`, который можно отдел
 |---|---|---:|---|
 | `catalog_id` | bigint | no | FK -> `custom_catalogs.id` |
 | `product_id` | bigint | no | FK -> `products.id` |
-| `position` | integer | no | Порядок товара |
-| `is_hidden` | boolean | no | Скрыт ли товар |
 
 ### `showcase_categories`
 
@@ -332,9 +308,11 @@ Editorial-слой поверх `products`, который можно отдел
 |---|---|---:|---|
 | `id` | bigint | no | PK |
 | `code` | text | no | `new / designers / men / women / sale` |
-| `label` | text | no | Видимое имя |
-| `behavior_kind` | text enum | no | Тип поведения |
-| `system_gender_value` | text | yes | Для `men/women` |
+| `title` | text | no | Видимое имя |
+
+> `showcase_categories` создаются только seed/migration-слоем.
+> В админке у них нет CRUD.
+> По `code` backend валидирует особые ограничения каждой категории.
 
 ### `showcase_category_attachments`
 
@@ -343,7 +321,7 @@ Editorial-слой поверх `products`, который можно отдел
 | `id` | bigint | no | PK |
 | `showcase_category_id` | bigint | no | FK -> `showcase_categories.id` |
 | `attachment_kind` | text enum | no | `filter / custom_catalog` |
-| `filter_id` | bigint | yes | FK -> `catalog_filters.id` |
+| `filter_id` | bigint | yes | FK -> `filters.id` |
 | `custom_catalog_id` | bigint | yes | FK -> `custom_catalogs.id` |
 | `position` | integer | no | Порядок |
 
@@ -352,7 +330,7 @@ Editorial-слой поверх `products`, который можно отдел
 | Column | Type | Null | Meaning |
 |---|---|---:|---|
 | `attachment_id` | bigint | no | FK -> `showcase_category_attachments.id` |
-| `filter_node_id` | bigint | no | FK -> `catalog_filter_nodes.id` |
+| `filter_node_id` | bigint | no | FK -> `filter_nodes.id` |
 
 > [!important]
 > `filter_node_id` обязан принадлежать тому же фильтру, который используется текущим `attachment_id`.
@@ -362,57 +340,50 @@ Editorial-слой поверх `products`, который можно отдел
 
 ### `product_dedup_decisions`
 
-Журнал решений админа по дублям и откатам.
+Журнал решений админа по дублям.
 
 | Column | Type | Null | Meaning |
 |---|---|---:|---|
 | `id` | bigint | no | PK |
-| `decision_kind` | text enum | no | `reject / merge / combine / undo` |
-| `created_product_id` | bigint | yes | FK -> `products.id`, если `combine` создал новый канонический товар |
-| `reverted_decision_id` | bigint | yes | FK -> `product_dedup_decisions.id` |
-| `notes` | text | yes | Комментарий админа |
-| `created_by_admin_user_id` | bigint | yes | FK -> `admin_users.id` |
+| `decision_kind` | text enum | no | `reject / merge` |
+| `created_product_id` | bigint | yes | FK -> `products.id`, новый активный товар, созданный результатом merge |
 | `created_at` | timestamptz | no | Создан |
 
 ### `product_dedup_decision_members`
 
-Состав участников решения.
+Входные товары конкретного решения.
 
 | Column | Type | Null | Meaning |
 |---|---|---:|---|
 | `decision_id` | bigint | no | FK -> `product_dedup_decisions.id` |
 | `product_id` | bigint | no | FK -> `products.id` |
-| `member_role` | text enum | no | `survivor / duplicate / input / result` |
 
 ## 5. Logical schema diagram
 
 ```mermaid
 erDiagram
-  PRODUCTS ||--o{ PRODUCT_LISTINGS : has
+  PRODUCTS ||--o{ PRODUCT_LISTING_MEMBERS : composed_from
+  PRODUCT_LISTINGS ||--o{ PRODUCT_LISTING_MEMBERS : included_in
   PRODUCT_LISTINGS ||--o{ PRODUCT_LISTING_VARIANTS : has
   PRODUCT_LISTINGS ||--o{ PRODUCT_LISTING_IMAGES : has
-  PRODUCTS ||--o| PRODUCT_OVERRIDES : has
+  PRODUCTS ||--o| PRODUCT_PRESENTATION : has
   PRODUCTS ||--o| PRODUCT_PRICE_OVERRIDES : priced_with
-  PRODUCTS ||--o{ PRODUCT_DISPLAY_IMAGES : has
-  CATEGORIES ||--o{ CATEGORY_NODES : expands
-  PRODUCTS ||--o{ PRODUCT_CATEGORY_ASSIGNMENTS : classified_in
-  CATEGORIES ||--o{ PRODUCT_CATEGORY_ASSIGNMENTS : owns
+  PRODUCTS ||--o{ PRODUCT_LISTING_GALLERY_IMAGES : has
+  PRODUCT_LISTINGS ||--o{ PRODUCT_LISTING_GALLERY_IMAGES : has
 
   DESIGNERS ||--o{ PRODUCTS : classifies
   DESIGNERS ||--o{ DESIGNER_SOURCE_NAMES : absorbs
-  DESIGNERS ||--o{ DESIGNER_PAGES : publishes
 
-  CATALOG_FILTERS ||--o{ CATALOG_FILTER_RULES : owns
-  CATALOG_FILTERS ||--o{ CATALOG_FILTER_NODES : expands
-  CATALOG_FILTER_RULES ||--o{ CATALOG_FILTER_RULE_LOCAL_CATEGORY_KEYWORDS : matches
-  CATALOG_FILTER_RULES ||--o{ CATALOG_FILTER_RULE_TITLE_KEYWORDS : matches
-  CATALOG_FILTER_RULES ||--o{ CATALOG_FILTER_RULE_MANUAL_PRODUCTS : pins
+  FILTERS ||--o{ FILTER_NODES : expands
+  FILTERS ||--o{ FILTER_LOCAL_CATEGORY_KEYWORDS : matches
+  FILTERS ||--o{ FILTER_TITLE_KEYWORDS : matches
+  FILTERS ||--o{ FILTER_MANUAL_PRODUCTS : pins
 
   CUSTOM_CATALOGS ||--o{ CUSTOM_CATALOG_PRODUCTS : contains
   PRODUCTS ||--o{ CUSTOM_CATALOG_PRODUCTS : appears_in
 
   SHOWCASE_CATEGORIES ||--o{ SHOWCASE_CATEGORY_ATTACHMENTS : owns
-  SHOWCASE_CATEGORY_ATTACHMENTS }o--|| CATALOG_FILTERS : references
+  SHOWCASE_CATEGORY_ATTACHMENTS }o--|| FILTERS : references
   SHOWCASE_CATEGORY_ATTACHMENTS }o--|| CUSTOM_CATALOGS : references
   PRODUCT_DEDUP_DECISIONS ||--o{ PRODUCT_DEDUP_DECISION_MEMBERS : records
 ```

@@ -16,7 +16,7 @@
 
 ## 2. Состояния `product_listings`
 
-### `source_orderability_status`
+### `orderability_status`
 
 - `orderable`
 - `sold_out`
@@ -35,9 +35,25 @@ Nullable поле.
 - `source_removed`
 - `manually_disabled`
 
+### Правило про отсутствие веса
+
+Если у товара:
+
+- `products.manual_weight_grams` не задан;
+- `source_weight_grams` отсутствует или равен нулю;
+- подходящее weight rule не найдено;
+
+то итоговый вес считается отсутствующим, а listing должен переходить в:
+
+- `orderability_status = unavailable`
+- `status_reason = missing_weight`
+
+Если позже админ задает ручной вес, это правило перестает применяться к этому товару,
+пока ручной вес явно не снят.
+
 ## 3. Состояния `products`
 
-### `commercial_availability_mode`
+### `availability_mode`
 
 - `in_stock`
 - `by_order`
@@ -58,7 +74,6 @@ Nullable поле.
 
 - `active`
 - `merged`
-- `deleted`
 
 ### `visibility_status`
 
@@ -97,7 +112,6 @@ stateDiagram-v2
 stateDiagram-v2
   [*] --> active
   active --> merged
-  active --> deleted
 ```
 
 ```mermaid
@@ -121,7 +135,7 @@ stateDiagram-v2
 
 Sync **не должен**:
 
-- затирать admin override;
+- затирать `product_presentation`;
 - затирать `product_price_overrides`;
 - затирать display image order;
 - создавать dedup-артефакты;
@@ -145,12 +159,20 @@ Sync **не должен**:
 
 - canonical product fields;
 - `gender`;
-- `commercial_availability_mode`;
+- `availability_mode`;
+- `primary_listing_id`;
+- `manual_weight_grams` при ручном весе;
 - manual listing fields;
 - `product_price_overrides` при ручной цене или ручной скидке;
-- override fields при необходимости;
+- `product_presentation` при необходимости;
 - display images;
 - category links.
+
+Правило для изображений:
+
+- source image у синхронизированного товара не удаляется, а только скрывается;
+- uploaded image можно удалить из фото-стека конкретного listing полностью;
+- итоговый порядок картинок управляется только через `product_listing_gallery_images`.
 
 ### 5.4. Bind manual product to source
 
@@ -158,29 +180,42 @@ Sync **не должен**:
 
 Он должен:
 
-- либо перепривязать существующий `manual listing` к `source`;
-- либо создать второй listing у того же product.
+- создать source-listing как отдельную атомарную сущность;
+- включить его в состав товара через `product_listing_members`;
+- при необходимости выбрать его новым `primary_listing_id`.
 
 ### 5.5. Dedup merge
 
-Не создает новый товар.
+Создает новый витринный товар.
 
 Он должен:
 
-- выбрать surviving `product`;
-- перевести `product_listings` duplicate product под surviving product;
-- duplicate product перевести в `lifecycle_status = merged`.
-
-### 5.6. Dedup combine
-
-Если combine реально нужен как отдельный бизнес-сценарий, он тоже не должен создавать `dedup://...`.
-
-Правильнее:
-
-- создать новый канонический `product`;
-- оба старых перевести в `merged`;
-- все `product_listings` перепривязать к новому продукту;
+- создать новый `product`;
+- собрать в нем плоский union member-listing входных товаров;
+- перепривязать эти member-listing к новому `product`, чтобы у каждого listing остался один текущий владелец;
+- выбрать один из member-listing как `primary_listing_id`;
+- старые входные `product` перевести в `lifecycle_status = merged`;
 - решение зафиксировать в `product_dedup_decisions`.
+
+### 5.6. Change filter node kind
+
+При смене `filters.node_kind` запись нельзя сохранять вслепую.
+
+Система должна сначала провалидировать дерево:
+
+- узел `filter` не может иметь детей;
+- parent/child-связи после смены типа должны оставаться допустимыми;
+- существующие showcase attachment и hidden-node ссылки не должны терять смысл.
+
+### 5.7. Showcase category lifecycle
+
+`showcase_categories` не создаются и не удаляются из admin UI.
+
+Правильный путь:
+
+- фиксированный набор записей создается seed/migration-слоем;
+- админ меняет только attachments и hidden-node состояние внутри этих категорий;
+- ограничения по `new / designers / men / women / sale` валидируются backend-логикой по `code`.
 
 ## 6. Derived fields
 
@@ -200,7 +235,6 @@ Sync **не должен**:
 - `display_title`
 - `display_description`
 - `display_commercial_badge`
-- `primary_listing_id` для UI/storefront;
 - `effective_source_id` для UI;
 - `display_status`, если он собирается из visibility + auto-hide source + source orderability;
 - `is_favorite`, если он выводится из category links.
@@ -215,15 +249,14 @@ Sync **не должен**:
 
 ### 7.1. Primary listing
 
-`primary_listing_id` не должен храниться в write-model `products`.
-Это projection-level указатель.
+`primary_listing_id` должен храниться в write-model `products`.
+Это явный выбор того member-listing, который дает товару базовые title/description по умолчанию.
 
-Он выбирается детерминированно:
+Ограничения:
 
-1. только среди `product_listings.is_enabled = true`;
-2. сначала `source_orderability_status = orderable`, потом `sold_out`, потом `unavailable`;
-3. при равенстве статуса приоритетнее listing с более свежим `last_synced_at`;
-4. при полном равенстве выигрывает меньший `id`.
+1. он должен ссылаться только на listing, входящий в `product_listing_members` этого товара;
+2. при merge админ или backend должен явно выбрать новый `primary_listing_id`;
+3. если текущий primary listing пропал у источника, система должна детерминированно выбрать новый active member-listing.
 
 ### 7.2. Primary variant
 
@@ -233,6 +266,12 @@ Sync **не должен**:
 2. если таких нет, среди всех variants listing;
 3. берется вариант с минимальным `price_amount`;
 4. при равенстве выигрывает меньший `position`.
+
+После выбора variant UI получает:
+
+- `effective_source_id <- selected_variant.listing.source_id`
+- `effective_listing_id <- selected_variant.listing_id`
+- фото-стек только из `product_listing_gallery_images` для этого `product_id + listing_id`
 
 ### 7.3. Display price
 
@@ -252,31 +291,72 @@ Sync **не должен**:
 - `display_currency_code <- primary_variant.currency_code`
 - `display_compare_at_price_amount <- primary_variant.compare_at_price_amount`
 
-### 7.4. Display title and description
+### 7.4. Effective weight
+
+Итоговый вес товара должен читаться по приоритету:
+
+1. если `products.manual_weight_grams IS NOT NULL`, то итоговый вес берется из него;
+2. если у primary listing есть `source_weight_grams > 0`, то итоговый вес берется из source;
+3. если source-веса у primary listing нет, система ищет weight rule, сохраняет его в `products.weight_rule_id` и берет вес из этого правила;
+4. если ни один источник веса не найден, итоговый вес считается отсутствующим.
+
+При этом отсутствие итогового веса не является просто нейтральным отсутствием данных.
+Для source-listing это означает, что товар нельзя нормально продавать, поэтому он должен
+получить `orderability_status = unavailable` и `status_reason = missing_weight`.
+
+При изменении `weight_rule_keywords` или `weight_rules` нельзя синхронно пересчитывать весь каталог.
+Нужен фоновый batch-пересчет только затронутых товаров.
+
+Если у нескольких правил одинаковое число совпадений, нужен только детерминированный технический tie-break.
+Ручной приоритет через поле вроде `sort_order` для этого не нужен.
+
+Дополнительные write-правила:
+
+1. если админ задает `manual_weight_grams`, sync и rules больше не могут менять итоговый вес этого товара;
+2. если у primary listing позже появляется нормальный source-вес, а ручного веса нет, `products.weight_rule_id` должен очищаться;
+3. если source-веса нет и rule тоже больше не срабатывает, `products.weight_rule_id` должен очищаться;
+4. `products.weight_rule_id` не хранит историю, а только текущее активное rule-сопоставление.
+
+### 7.5. Display title and description
 
 Итоговые тексты для UI не должны храниться отдельно в write-model.
 
 Они собираются так:
 
-- `display_title <- product_overrides.title_override ?? primary_listing.source_title`
-- `display_description <- product_overrides.description_override ?? primary_listing.source_description_text`
+- `display_title <- product_presentation.title_override ?? primary_listing.source_title`
+- `effective_description_text <- product_presentation.description_text ?? primary_listing.source_description_text`
+- `effective_description_html <- product_presentation.description_html ?? primary_listing.source_description_html`
 
-Если source-профиль разрешает HTML-описание, то projection дополнительно может отдать:
+Открытое API не должно возвращать два параллельных описания товара.
+Оно должно возвращать одно поле `description`.
 
-- `display_description_html <- primary_listing.source_description_html`
+Правило выбора:
 
-Но это именно render-выбор ответа, а не отдельное каноническое поле товара.
+Сначала берутся настройки источника именно у `primary_listing.source_id`.
 
-### 7.5. Display commercial badge
+1. если `source_settings.description_mode = hidden`, описание не отдается;
+2. если `source_settings.description_mode = text`, `description <- effective_description_text`;
+3. если `source_settings.description_mode = html`, `description <- effective_description_html ?? effective_description_text`.
 
-Витринный бейдж должен читаться только из `products.commercial_availability_mode`:
+Это именно render-выбор ответа, а не отдельное каноническое поле товара.
+
+Если у товара несколько member-listing, базовые title/description всегда берутся именно из `products.primary_listing_id`,
+а не пытаются автоматически склеиваться из нескольких источников.
+
+Если один из member-listing исчез у источника, это не должно ломать весь merged product и не требует переписывать историю merge.
+Активный витринный товар просто продолжает работать на оставшемся наборе доступных member-listing.
+Если исчезнувший listing был primary, система должна выбрать новый `primary_listing_id`.
+
+### 7.6. Display commercial badge
+
+Витринный бейдж должен читаться только из `products.availability_mode`:
 
 - `in_stock -> "В наличии"`
 - `by_order -> "Под заказ"`
 
-Он не должен вычисляться из `source_orderability_status`, потому что это разные смыслы.
+Он не должен вычисляться из `orderability_status`, потому что это разные смыслы.
 
-### 7.6. Reset to derived pricing
+### 7.7. Reset to derived pricing
 
 Возврат товара обратно на автоматическое ценообразование должен происходить удалением строки из `product_price_overrides`.
 
@@ -299,18 +379,18 @@ sequenceDiagram
   Backend->>Products: refresh derived pointers
 ```
 
-## 9. Sequence: admin override
+## 9. Sequence: admin presentation edit
 
 ```mermaid
 sequenceDiagram
   participant Admin
   participant API
   participant Products
-  participant Overrides
+  participant Presentation
   participant DisplayImages
 
   Admin->>API: patch product
-  API->>Overrides: upsert override row
+  API->>Presentation: upsert presentation row
   API->>DisplayImages: rewrite final image order
   API->>Products: update visibility if requested
 ```

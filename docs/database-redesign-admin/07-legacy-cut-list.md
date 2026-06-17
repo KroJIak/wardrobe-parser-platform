@@ -36,7 +36,8 @@
 - `manual_image_asset_ids` как бизнес-модель;
 - `hidden_source_image_asset_ids` как бизнес-модель;
 - `manual_image_order` как JSON внутри товара;
-- `title_override` и `description_override` внутри товара;
+- `title_override` и единое поле `description_override` внутри товара;
+- пара флагов `show_description` + `show_raw_description_html` как бизнес-модель режима описания источника;
 - `title_sync_locked`, `description_sync_locked`, `images_sync_locked` внутри товара;
 - `auto_hide_force_visible` внутри той же сущности, что и canonical product.
 
@@ -48,9 +49,9 @@
 
 Все это должно быть вынесено в отдельные сущности:
 
-- `product_overrides`
+- `product_presentation`
 - `product_price_overrides`
-- `product_display_images`
+- `product_listing_gallery_images`
 - `product_listings`
 - `product_listing_images`
 
@@ -59,7 +60,7 @@
 Не переносить:
 
 - создание synthetic product с URL вида `dedup://...`;
-- хранение merge/combine результата как “еще одного обычного товара” без явной жизненной семантики;
+- неявное хранение результата merge без `created_product_id` и без явного `lifecycle_status = merged` у входных товаров;
 - зависимость dedup от materialized variant JSON.
 
 ## 4. Legacy-patterns внутри текущего ingest
@@ -116,7 +117,8 @@
 - `product_listing_variants`
 - `sources`
 - `designers`
-- `catalog_filters`
+- `designer_source_names`
+- `filters`
 - `custom_catalogs`
 
 ## 6. Итоговый cut rule

@@ -21,16 +21,19 @@
 
 У нее есть:
 
-- канонический дизайнер;
+- финальный публичный дизайнер;
+- выбранный primary listing для базовых текстов;
 - канонический пол;
 - коммерческий режим продажи;
-- канонический вес;
+- ручной вес, если админ его задал;
+- ссылку на активное правило веса, если source-веса нет;
 - статус жизненного цикла;
 - статус видимости;
 
 Но у нее **нет**:
 
 - собственного базового source-like title/description дубля;
+- собственного хранимого итогового веса;
 - source URL как доменного ядра;
 - source handle;
 - source variant identity;
@@ -50,13 +53,31 @@
 - исходные source-тексты;
 - ingest-status;
 - source-specific orderability snapshot;
-- время первого и последнего обнаружения.
+- время последнего обнаружения и последней синхронизации.
 
 > [!note]
 > Для `sync`-listing это тексты, пришедшие из магазина.
 > Для `manual`-listing это тексты, введенные админом как базовое содержимое товара.
 
-### 2.3. ProductListingVariant
+> [!note]
+> `ProductListing` — атомарная sync-сущность.
+> Дедуп не смешивает несколько listing в один listing, а собирает витринный `Product` из набора listing.
+
+### 2.3. ProductListingMember
+
+Это связь между витринным `Product` и атомарным `ProductListing`.
+
+Она нужна, чтобы:
+
+- один витринный товар мог состоять из нескольких source-листингов;
+- merge создавал новый товар из плоского union listing;
+- цепочки вида `AB + C` на уровне данных превращались сразу в набор `{A, B, C}`.
+
+И дополнительное правило:
+
+- один listing в каждый момент времени принадлежит только одному текущему витринному `Product`.
+
+### 2.4. ProductListingVariant
 
 Это вариант внутри source listing.
 
@@ -70,32 +91,38 @@
 - currency;
 - availability.
 
-### 2.4. ProductListingImage
+### 2.5. ProductListingImage
 
 Это изображение, приехавшее из источника.
 
-### 2.5. ProductOverride
+### 2.6. ProductPresentation
 
 Это ручные правки админа для каталога:
 
 - title override;
-- description override;
+- description text;
+- description html;
 - description visibility;
-- force visible.
 
 Это именно editorial-слой поверх канонического товара.
 Он не подменяет саму сущность `Product`, а лишь позволяет витрине и admin UI жить с ручной надстройкой поверх базовых полей primary listing, которую можно отдельно сбросить.
 
-### 2.6. ProductDisplayImage
+### 2.7. ProductListingGalleryImage
 
-Это конечный порядок изображений, который увидит витрина:
+Это конечный стек изображений конкретного member-listing, который увидит витрина:
 
 - source image;
 - uploaded image asset;
 - hidden flag;
 - explicit order.
 
-### 2.7. ProductPriceOverride
+Она нужна, чтобы при выборе варианта UI мог:
+
+- показать источник этого варианта;
+- показать только фотографии именно его listing;
+- не смешивать стеки фото разных сайтов в одну кашу.
+
+### 2.8. ProductPriceOverride
 
 Это отдельная сущность ручной рублевой цены товара:
 
@@ -104,21 +131,16 @@
 
 Она не подменяет source price и не является частью editorial override.
 
-### 2.8. Designer / DesignerSourceName / DesignerPage
+### 2.9. Designer / DesignerSourceName
 
 Нужны для разделения:
 
 - исходного бренда;
-- канонического дизайнера;
-- страницы дизайнера в каталоге.
+- финального публичного дизайнера каталога.
 
-### 2.9. CatalogFilter / CatalogFilterNode
+### 2.10. CatalogFilter / CatalogFilterNode
 
 Нужны для дерева фильтров и мультифильтров.
-
-### 2.10. Category / ProductCategoryAssignment
-
-Нужны для локальной товарной классификации, которую админ видит в карточке товара и использует как сырье для части rule-based логики.
 
 ### 2.11. CustomCatalog
 
@@ -126,7 +148,9 @@
 
 ### 2.12. ProductDedupDecision
 
-Нужна для явного журнала решений merge/combine/reject/undo.
+Нужна для явного журнала решений merge/reject.
+При merge она должна указывать новый витринный `Product`, который стал результатом объединения,
+а входные товары хранить отдельными member-строками без дублирования роли результата.
 
 ### 2.13. ShowcaseCategory
 
@@ -138,6 +162,9 @@
 - Женское
 - Скидки
 
+Это seeded-справочник.
+Админ не создает и не удаляет эти категории вручную.
+
 ## 3. Chen-style conceptual diagram
 
 > [!note]
@@ -148,62 +175,62 @@
 flowchart LR
   Product[Entity: Product]
   Listing[Entity: ProductListing]
+  ListingMember[Entity: ProductListingMember]
   Variant[Entity: ProductListingVariant]
   Image[Entity: ProductListingImage]
   Source[Entity: Source]
-  Override[Entity: ProductOverride]
-  DisplayImage[Entity: ProductDisplayImage]
+  Presentation[Entity: ProductPresentation]
+  ListingGalleryImage[Entity: ProductListingGalleryImage]
   PriceOverride[Entity: ProductPriceOverride]
   Designer[Entity: Designer]
   DesignerName[Entity: DesignerSourceName]
-  DesignerPage[Entity: DesignerPage]
-  Category[Entity: Category]
-  ProductCategory[Entity: ProductCategoryAssignment]
   DedupDecision[Entity: ProductDedupDecision]
 
-  R1{listed_as}
-  R2{belongs_to}
+  R1{composed_from}
+  R2{has}
   R3{comes_from}
   R4{overridden_by}
   R5{displayed_with}
   R5a{priced_with}
   R6{normalized_into}
-  R7{published_as}
-  R8{classified_in}
-  R9{decides_on}
+  R7{decides_on}
 
-  Product --- R1 --- Listing
+  Product --- R1 --- ListingMember
+  Listing --- R1 --- ListingMember
   Listing --- R2 --- Variant
   Listing --- R2 --- Image
   Source --- R3 --- Listing
-  Product --- R4 --- Override
-  Product --- R5 --- DisplayImage
+  Product --- R4 --- Presentation
+  Product --- R5 --- ListingGalleryImage
+  Listing --- R5 --- ListingGalleryImage
   Product --- R5a --- PriceOverride
   DesignerName --- R6 --- Designer
-  Designer --- R7 --- DesignerPage
   Product --- R6 --- Designer
-  Product --- R8 --- ProductCategory
-  Category --- R8 --- ProductCategory
-  DedupDecision --- R9 --- Product
+  DedupDecision --- R7 --- Product
 ```
 
 ## 4. Physical ER approximation
 
 ```mermaid
 erDiagram
-  PRODUCTS ||--o{ PRODUCT_LISTINGS : has
+  PRODUCTS ||--o{ PRODUCT_LISTING_MEMBERS : composed_from
+  PRODUCT_LISTINGS ||--o{ PRODUCT_LISTING_MEMBERS : included_in
   SOURCES ||--o{ PRODUCT_LISTINGS : publishes
   PRODUCT_LISTINGS ||--o{ PRODUCT_LISTING_VARIANTS : has
   PRODUCT_LISTINGS ||--o{ PRODUCT_LISTING_IMAGES : has
-  PRODUCTS ||--o| PRODUCT_OVERRIDES : overridden_by
-  PRODUCTS ||--o{ PRODUCT_DISPLAY_IMAGES : displayed_with
+  PRODUCTS ||--o| PRODUCT_PRESENTATION : overridden_by
+  PRODUCTS ||--o{ PRODUCT_LISTING_GALLERY_IMAGES : displayed_with
+  PRODUCT_LISTINGS ||--o{ PRODUCT_LISTING_GALLERY_IMAGES : displayed_with
   PRODUCTS ||--o| PRODUCT_PRICE_OVERRIDES : priced_with
-  PRODUCTS ||--o{ PRODUCT_CATEGORY_ASSIGNMENTS : classified_in
-  CATEGORIES ||--o{ PRODUCT_CATEGORY_ASSIGNMENTS : classifies
   PRODUCT_DEDUP_DECISIONS ||--o{ PRODUCT_DEDUP_DECISION_MEMBERS : records
   DESIGNERS ||--o{ PRODUCTS : owns
   DESIGNERS ||--o{ DESIGNER_SOURCE_NAMES : absorbs
-  DESIGNERS ||--o{ DESIGNER_PAGES : exposed_as
+  FILTERS ||--o{ FILTER_NODES : expands
+  FILTERS ||--o{ FILTER_LOCAL_CATEGORY_KEYWORDS : matches
+  FILTERS ||--o{ FILTER_TITLE_KEYWORDS : matches
+  FILTERS ||--o{ FILTER_MANUAL_PRODUCTS : pins
+  CUSTOM_CATALOGS ||--o{ CUSTOM_CATALOG_PRODUCTS : contains
+  SHOWCASE_CATEGORIES ||--o{ SHOWCASE_CATEGORY_ATTACHMENTS : owns
 ```
 
 ## 5. Самые важные смысловые разделения
@@ -238,9 +265,9 @@ erDiagram
 
 Если их не разделить, невозможно качественно реализовать:
 
-- слияние брендов в одну страницу дизайнера;
-- исключение бренда из директории;
-- единое описание страницы дизайнера.
+- слияние нескольких source brand в одного публичного дизайнера;
+- единое финальное имя дизайнера на товаре, в фильтрах и на отдельной странице;
+- единое описание дизайнера.
 
 ### Filter != ShowcaseCategory
 

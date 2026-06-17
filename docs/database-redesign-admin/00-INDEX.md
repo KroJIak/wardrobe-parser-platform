@@ -23,6 +23,7 @@
 - [[database-redesign-admin/05-sql-constraints-and-indexing|05-sql-constraints-and-indexing]]
 - [[database-redesign-admin/06-supporting-contexts|06-supporting-contexts]]
 - [[database-redesign-admin/07-legacy-cut-list|07-legacy-cut-list]]
+- [[database-redesign-admin/table-attributes/00-INDEX|table-attributes/00-INDEX]]
 
 ## Главные проектные решения
 
@@ -67,9 +68,9 @@
 - `products`
 - `product_listings`
 - `product_listing_variants`
-- `catalog_filters`
-- `catalog_filter_nodes`
-- `showcase_sections`
+- `filters`
+- `filter_nodes`
+- `showcase_settings`
 
 ## Что не допускается в новой БД
 

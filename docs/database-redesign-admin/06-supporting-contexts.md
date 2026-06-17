@@ -5,35 +5,68 @@
 ### `sources`
 
 Это не просто список магазинов.
-Это административный профиль источника.
+Это паспорт источника.
 
 | Column | Meaning |
 |---|---|
-| `key` | стабильный межсервисный идентификатор |
+| `key` | стабильный межсервисный идентификатор, который система один раз генерирует из `base_url` |
 | `name` | название источника |
 | `base_url` | базовый URL источника |
+
+> [!important]
+> `sources.key` не вводится вручную.
+> Он автоматически строится из host части `base_url` при создании источника и после этого остается неизменным.
+
+### `source_settings`
+
+Это отдельный слой админских настроек источника.
+
+| Column | Meaning |
+|---|---|
+| `source_id` | к какому источнику относятся настройки |
+| `supplier_id` | логистический supplier |
 | `is_enabled` | источник включен |
 | `is_sync_enabled` | участвует ли в sync |
 | `hide_auto_added_products` | auto-hide политика |
-| `show_description` | показывать ли source description |
-| `show_raw_description_html` | можно ли рендерить сырой HTML-блок source description |
+| `description_mode` | режим описания: `hidden / text / html` |
 | `show_images` | показывать ли source images |
-| `supplier_id` | логистический supplier |
 | `promo_factor` | pricing modifier |
 | `promo_only_no_discount` | promo rule |
 | `buyout_surcharge_value` | доп. наценка |
 | `buyout_surcharge_currency` | валюта наценки |
+
+### `source_sync_state`
+
+Это runtime-состояние последней синхронизации по источнику.
+
+| Column | Meaning |
+|---|---|
+| `source_id` | к какому источнику относится runtime-состояние |
 | `last_sync_at` | последний sync |
 | `last_sync_duration_sec` | длительность |
 | `last_sync_status` | статус последнего sync |
+| `last_error_code` | машинный код последней ошибки |
+| `last_error_message` | текст последней ошибки |
+
+> [!important]
+> `source_sync_state` нужен как быстрый snapshot текущего состояния источника.
+> Здесь хранится только последняя ошибка, а не вся история.
 
 > [!note]
 > Текущее состояние runtime показывает, что source-профиль реально живой и нужен, но продуктовая фильтрация по источнику не должна опираться только на `products.source_id`.
-> Правильная основа для нее — `product_listings.source_id`.
+> Правильная основа для нее — связка `product_listing_members -> product_listings.source_id`.
 
 > [!note]
 > Source также не должен быть владельцем витринного состояния `В наличии / Под заказ`.
 > Он владеет только source-level фактом, можно ли сейчас выкупить товар у исходного продавца.
+
+> [!note]
+> `source_settings.description_mode` у источника primary listing управляет только тем, в каком виде публичный API отдает описание товара.
+> Сам текст и сам HTML хранятся на товарном слое отдельно.
+
+> [!note]
+> История ошибок должна жить не в `source_sync_state`, а в `sync_job_source_runs`.
+> `source_sync_state` отвечает на вопрос "что сейчас с этим источником", а `sync_job_source_runs` отвечает на вопрос "что происходило по нему в каждом запуске".
 
 ## 2. Pricing and logistics
 
@@ -76,7 +109,6 @@ Singleton или почти singleton контур формулы.
 ### `weight_rules`
 
 - `weight_grams`
-- `sort_order`
 - `is_enabled`
 
 ### `weight_rule_keywords`
@@ -84,32 +116,33 @@ Singleton или почти singleton контур формулы.
 - `rule_id`
 - `keyword`
 
+> [!note]
+> На большом каталоге нельзя делать полный синхронный пересчет веса после каждого добавления или удаления ключевого слова.
+> Правильная модель:
+> - отдельного `products.weight_grams` в write-model нет;
+> - `product_listings.source_weight_grams` хранит source-вес, если источник его прислал;
+> - `products.manual_weight_grams` хранит ручной вес, если админ его задал;
+> - `products.weight_rule_id` хранит правило, которое сейчас дало итоговый вес, только если source-веса нет;
+> - итоговый вес собирается при чтении по приоритету `manual -> source -> rule`;
+> - правка rules запускает фоновый пересчет затронутых товаров или batch-пересчет.
+
+> [!note]
+> Ручной `sort_order` для правил веса не нужен.
+> Нормальная логика выбора: выигрывает правило с наибольшим числом совпавших ключевых слов.
+
 ## 4. Showcase structure
 
-Кроме filters/categories нужны:
+Кроме filters/showcase нужны отдельные медийные сущности главной страницы.
 
-### `showcase_sections`
+### `showcase_settings`
 
-Если верхняя навигация когда-либо перестанет быть жестко фиксированной.
+Одна строка с hero-изображением первого экрана главной страницы.
+Там нет текста, заголовка, CTA или layout-параметров, только ссылка на картинку.
 
-Но прямо сейчас, исходя из admin как продукта, можно обойтись без отдельной runtime-table и держать:
+### `showcase_carousel_images`
 
-- `showcase_categories` с фиксированным `code`.
-
-### `showcase_media_settings`
-
-Для hero/carousel медиа.
-Если настройка одна на весь storefront, можно хранить это:
-
-- либо в `admin_ui_settings`,
-- либо в отдельной таблице `showcase_settings`.
-
-Я бы предпочел:
-
-- `showcase_settings`
-- `showcase_carousel_items`
-
-потому что это уже не auth и не технический UI-state.
+Отдельный список фотографий карусели главной страницы.
+Здесь нужен только `image_asset_id` и `position`, потому что контент карусели состоит только из самих фото и их порядка.
 
 ## 4.1. Что не должно попадать в taxonomy rules
 
@@ -125,28 +158,15 @@ Singleton или почти singleton контур формулы.
 - это смешивает мерчендайзинг и runtime-состояние товара;
 - это ломает чистую Чен-модель, где категория зависит от сущности товара, а не от временного процесса sync.
 
-## 4.2. Local categories as separate context
+## 4.2. Local category labels
 
-Локальные категории не должны растворяться внутри фильтров.
+Во фронте нет отдельного CRUD-контура для локальных категорий товара.
 
-Это отдельный слой, потому что они нужны сразу для трех разных задач:
+Поэтому в текущей модели:
 
-- админ видит их в карточке товара;
-- rule-based логика использует их как один из сигналов;
-- ручное “избранное” и ручная приоритизация живут именно на уровне категории товара, а не на уровне витринного фильтра.
-
-Минимальный контур:
-
-- `categories`
-- `category_nodes`
-- `category_keyword_rules`
-- `product_category_assignments`
-
-Именно из этого слоя уже могут читать:
-
-- фильтр-правила;
-- кастомные каталоги;
-- витринные attachment-правила.
+- filter rules используют local-category labels как уже готовые classifier/source labels;
+- эти labels не образуют отдельное дерево, которое админ редактирует в taxonomy-tab;
+- showcase taxonomy читает их только как один из сигналов для filter matching.
 
 ## 5. Auth and admin
 
@@ -165,12 +185,16 @@ Singleton или почти singleton контур формулы.
 
 ## 6. Dedup and moderation
 
-Новый dedup-контур не должен создавать synthetic products.
+Новый dedup-контур не должен создавать synthetic products вроде `dedup://...`.
+Но он может и должен создавать новый обычный витринный `product` как результат merge.
 
 Его write-model:
 
 - `product_dedup_decisions`
 - `product_dedup_decision_members`
+
+При этом member-listing входных товаров не дублируются по нескольким витринным товарам.
+После merge они перепривязываются к новому активному `product`.
 
 А candidates лучше держать не как постоянную write-table, а как вычисляемый moderation queue или projection.
 
@@ -195,6 +219,7 @@ Singleton или почти singleton контур формулы.
 Его роль:
 
 - ручные изображения товаров;
+- ручные изображения listing-стеков у товаров;
 - hero/carousel;
 - любые иные загруженные картинки админки.
 

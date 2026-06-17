@@ -16,6 +16,17 @@
 - `UNIQUE (key)`
 - `UNIQUE (base_url_normalized)`
 
+> `key` должен генерироваться один раз из `base_url_normalized` при создании источника.
+> После создания источника `key` не должен автоматически меняться вслед за правкой `base_url`.
+
+### `source_settings`
+
+- `UNIQUE (source_id)`
+
+### `source_sync_state`
+
+- `UNIQUE (source_id)`
+
 ### `product_listings`
 
 - `UNIQUE (source_id, url)`
@@ -38,7 +49,11 @@
 
 ### `designer_source_names`
 
-- `UNIQUE (normalized_key)`
+- `UNIQUE (lower(source_name))`
+
+### `filters`
+
+- `UNIQUE (slug)`
 
 ### `custom_catalogs`
 
@@ -50,7 +65,7 @@
 
 ### `product_dedup_decision_members`
 
-- `UNIQUE (decision_id, product_id, member_role)`
+- `UNIQUE (decision_id, product_id)`
 
 ## 3. FK policy
 
@@ -58,11 +73,22 @@
 
 Нужен там, где child не имеет смысла без parent:
 
-- `product_listings.product_id -> products.id`
+- `product_listing_members.product_id -> products.id`
+- `product_listing_members.listing_id -> product_listings.id`
 - `product_listing_variants.listing_id -> product_listings.id`
 - `product_listing_images.listing_id -> product_listings.id`
-- `product_display_images.product_id -> products.id`
-- `product_overrides.product_id -> products.id`
+- `product_listing_gallery_images.product_id -> products.id`
+- `product_listing_gallery_images.listing_id -> product_listings.id`
+- `product_presentation.product_id -> products.id`
+- `source_settings.source_id -> sources.id`
+- `source_sync_state.source_id -> sources.id`
+
+### `SET NULL`
+
+Нужен там, где parent можно отвязать без удаления самого child:
+
+- `products.weight_rule_id -> weight_rules.id`
+- `products.primary_listing_id -> product_listings.id`
 
 ### `RESTRICT`
 
@@ -75,7 +101,7 @@
 
 Новая схема должна использовать явные `CHECK`, а не договоренности в коде.
 
-### `product_display_images`
+### `product_listing_gallery_images`
 
 Ровно один источник происхождения:
 
@@ -84,7 +110,18 @@
 
 И дополнительный relational invariant:
 
-- `listing_image_id` должен ссылаться только на изображение listing того же `product_id`
+- `listing_image_id` должен ссылаться только на изображение того же `listing_id`
+- `listing_id` должен входить в состав `product_id` через `product_listing_members`
+
+### `product_listing_members`
+
+- `UNIQUE (product_id, listing_id)`
+- `UNIQUE (listing_id)`
+
+И дополнительный relational invariant:
+
+- `products.primary_listing_id`, если заполнен, должен ссылаться на один из `listing_id` этого товара
+- один `listing` не может одновременно принадлежать двум текущим витринным товарам; при merge membership переносится в новый `product`
 
 ### `showcase_category_attachments`
 
@@ -101,8 +138,7 @@
 
 ### `product_dedup_decisions`
 
-- `created_product_id IS NOT NULL` только для `decision_kind = 'combine'`
-- `reverted_decision_id IS NOT NULL` только для `decision_kind = 'undo'`
+- `created_product_id IS NOT NULL` только для `decision_kind = 'merge'`
 
 ### `product_price_overrides`
 
@@ -117,10 +153,15 @@
 
 - `products (updated_at desc, id desc)`
 - `products (visibility_status, lifecycle_status)`
-- `products (commercial_availability_mode)`
+- `products (availability_mode)`
 - `products (designer_id)`
+- `products (weight_rule_id)`
+- `products (primary_listing_id)`
 - `product_price_overrides (product_id)`
-- `product_listings (product_id, is_enabled, last_synced_at desc)`
+- `product_listing_members (product_id, listing_id)`
+- `product_listing_members (listing_id)`
+- `product_listings (last_synced_at desc, id)`
+- `product_listing_gallery_images (product_id, listing_id, position)`
 
 ### URL / host lookup для admin
 
@@ -144,8 +185,9 @@
 ### Поиск и текстовые фильтры по товару
 
 - текстовый поиск должен идти по `product_listings.source_title`
-- текстовый поиск по описанию должен идти по `product_listings.source_description_text`
-- если нужен быстрый каталоговый read, эти поля должны попадать в projection, а не дублироваться обратно в `products`
+- текстовый поиск по описанию должен идти не только по source-слою, а по итоговому текстовому описанию товара
+- базовое правило: `effective_description_text <- product_presentation.description_text ?? product_listings.source_description_text`
+- если нужен быстрый каталоговый read, это поле должно попадать в projection или materialized search-layer, а не дублироваться обратно в `products`
 
 ### Поиск товара по external_id
 
@@ -153,17 +195,14 @@
 
 ### Директория дизайнеров
 
-- `designer_source_names (normalized_key)`
-- `designer_pages (designer_id)`
+- `designer_source_names (designer_id)`
+- `designers (slug)`
 
 ### Категоризация и фильтры
 
-- `category_nodes (parent_node_id, position)`
-- `product_category_assignments (category_id, product_id)`
-- `catalog_filter_rules (filter_id, is_enabled)`
-- `catalog_filter_nodes (parent_node_id, position)`
-- `catalog_filter_rule_manual_products (rule_id, product_id)`
-- `custom_catalog_products (catalog_id, position)`
+- `filter_nodes (parent_node_id, position)`
+- `filter_manual_products (filter_id, product_id)`
+- `custom_catalog_products (catalog_id, product_id)`
 - `showcase_category_attachments (showcase_category_id, position)`
 
 ## 6. Что не должно индексироваться “на всякий случай”
