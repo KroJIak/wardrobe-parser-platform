@@ -33,7 +33,7 @@ Layer 1: State services          - PostgreSQL, Redis, файловая конф�
 
 ## Междоменные зависимости
 
-- `backend-design/09-deployment-and-operations.md`
-- `parser-service-design/01-project-setup-and-runtime-dependencies.md`
-- `frontend-design/01-project-setup.md`
+- runtime-код `backend/`
+- runtime-код `service/`
+- runtime-код `frontend/`
 - `api/auth.md`

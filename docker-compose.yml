@@ -14,6 +14,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
@@ -27,6 +28,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    restart: unless-stopped
 
   backend-db-init:
     build:
@@ -145,9 +147,9 @@ services:
         FRONTEND_APP: site
     expose:
       - "80"
-    depends_on:
-      backend:
-        condition: service_healthy
+#    depends_on:
+#      backend:
+#        condition: service_healthy
     restart: unless-stopped
 
   frontend-admin:

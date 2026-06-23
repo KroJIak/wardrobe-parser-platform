@@ -14,7 +14,7 @@
 ## Граница
 
 - Охватывает: операционные и инженерные артефакты рядом с репозиторием вне основного runtime платформы.
-- НЕ охватывает: production request flow, уже описанный в `frontend-design/`, `backend-design/`, `parser-service-design/`, `database-schema/` и `infra-design/`.
+- НЕ охватывает: production request flow, который теперь описывается через `database-redesign-admin/`, `infra-design/` и живой runtime-код в `frontend/`, `backend/`, `service/`.
 
 ## Индекс документов
 

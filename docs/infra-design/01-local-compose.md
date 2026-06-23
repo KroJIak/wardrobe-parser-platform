@@ -4,7 +4,7 @@
 
 - Охватывает: локальную Docker Compose-топологию, порядок запуска, порты, volumes и маршрутизацию разработки.
 - НЕ охватывает: hosted-переключение доменов, настройку внешнего reverse proxy или API-контракты уровня приложения.
-- Зависит от: `02-ARCHITECTURE.md`, `backend-design/09-deployment-and-operations.md`.
+- Зависит от: `02-ARCHITECTURE.md` и живого runtime-кода в `backend/`.
 
 ## Топология сервисов
 

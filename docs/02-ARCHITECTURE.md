@@ -152,10 +152,10 @@ Hosted и local deployment используют один и тот же набо
 
 ## Карта чтения
 
-- Для frontend behavior: `frontend-design/`
-- Для auth и contracts: `api/auth.md` и `api/protocols/frontend--backend.md`
-- Для backend orchestration: `backend-design/`
-- Для parser execution: `parser-service-design/`
-- Для persistent ownership: `database-schema/`
+- Для frontend behavior: runtime-код в `frontend/`
+- Для auth: `api/auth.md` и runtime-код в `backend/app/services/auth/`
+- Для backend orchestration: runtime-код в `backend/`
+- Для parser execution: runtime-код в `service/`
+- Для persistent ownership: `database-redesign-admin/`
 - Для топологии рантайма и deployment: `infra-design/`
 - Для поверхностей рядом с репозиторием, не входящих в runtime: `repo-auxiliary/`

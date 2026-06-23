@@ -137,7 +137,7 @@ Payload claims:
 | `require_superadmin` | у аутентифицированного пользователя должно быть `is_superuser=true` |
 | `require_permission("...")` | у аутентифицированного пользователя должен быть конкретный permission, если он не superadmin |
 
-Каталог permissions статический и задокументирован в [data-models/enums.md](/home/andrey-debian/Projects/wardrobe-parser-platform/docs/api/data-models/enums.md:1).
+Каталог permissions считается runtime-контрактом backend и должен проверяться по коду auth/RBAC в `backend/app/services/auth/`, а не по удаленным parser-era enum docs.
 
 ## Семантика auth-ошибок
 | Ситуация | Status | Шаблон detail |
