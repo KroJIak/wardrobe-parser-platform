@@ -79,22 +79,15 @@ POSTGRES_HOST=postgres
 ## 4. Настроить входы для необязательного pricing worker
 
 Фоновый pricing worker запускается как `backend-worker`.
-Если включено automatic Bybit rate refresh, проверьте эти значения:
+Если включено automatic Bybit rate refresh, проверьте только эти значения:
 
 | Переменная | Назначение |
 |----------|------------|
-| `PRICING_BYBIT_RATE_AUTO_ENABLED` | включить периодическое обновление |
-| `PRICING_BYBIT_RATE_CACHE_SEC` | длительность кэша |
-| `PRICING_BYBIT_RATE_TIMEOUT_SEC` | timeout внешнего запроса |
 | `PRICING_BYBIT_FIAT` | fiat market |
 | `PRICING_BYBIT_ASSET` | base asset |
-| `PRICING_BYBIT_ADS_LIMIT` | лимит объявлений на запрос |
-| `PRICING_BYBIT_BUCKET_STEP_USDT` | шаг bucket |
-| `PRICING_BYBIT_BUCKET_MAX_USDT` | верхняя граница bucket |
-| `PRICING_BYBIT_OUTLIER_MAX_DEVIATION_RATIO` | порог фильтра outlier |
-| `PRICING_BYBIT_WORKER_INTERVAL_SEC` | интервал цикла worker |
+| `PRICING_BYBIT_WORKER_INTERVAL_SEC` | интервал цикла worker, поддерживает `s/m/h/d/w` |
 
-Если развертывание не использует automatic Bybit-derived rates, отключайте это явно, а не неявно.
+Остальные параметры Bybit зафиксированы в backend-коде и не настраиваются через `.env`.
 
 ## 5. Подготовить конфигурацию источников
 
@@ -151,7 +144,7 @@ Parser service владеет `config/sources.json` как durable source regist
 - значения в `.env` существуют и не закоммичены в git
 - PostgreSQL и Redis healthy
 - `backend-db-init` выполнил `alembic upgrade head`
-- `backend` может достучаться до `service` через `SERVICE_BASE_URL`
+- `backend` использует внутренний адрес `http://service:8000` по умолчанию; отдельно настраивать это не нужно
 - `service` может достучаться до `backend` через `BACKEND_BASE_URL`
 - `backend_uploads` переживает перезапуски контейнеров
 - `service/config/sources.json` переживает перезапуски сервиса парсинга

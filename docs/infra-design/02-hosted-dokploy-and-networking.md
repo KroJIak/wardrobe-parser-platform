@@ -62,7 +62,7 @@ Dokploy должен направлять каждый домен напряму
 - backend admin bootstrap credentials
 - backend token secret
 - parser service `BACKEND_BASE_URL`
-- backend `SERVICE_BASE_URL`
+- backend использует внутренний адрес `http://service:8000` по умолчанию
 - allowed CORS origins, согласованные с public domains
 
 ## Проверки целостности deployment

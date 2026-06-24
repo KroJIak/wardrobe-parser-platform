@@ -13,7 +13,6 @@
 | `POSTGRES_PASSWORD` | postgres, backend, service | аутентификация в database |
 | `ADMIN_SUPERUSER_PASSWORD` | backend | bootstrap admin access |
 | `ADMIN_TOKEN_SECRET` | backend | подпись token |
-| `REDIS_URL` | backend | runtime cache / основа rate-limit |
 | Bybit pricing env vars | backend-worker, backend | интеграция с внешним pricing source |
 
 Операционное правило: все secrets должны передаваться через environment configuration и никогда не коммититься в git.
