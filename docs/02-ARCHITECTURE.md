@@ -38,7 +38,8 @@ source-specific adapters, browser automation, Node tooling и long-running sync 
 
 ### Общая база данных с одним владельцем миграций
 
-И backend, и parser service получают database URL, но только backend является документированным владельцем схемы.
+Runtime-данными каталога и реестром источников владеет backend через PostgreSQL.
+Parser service не ходит в БД напрямую: он получает runtime-реестр источников только через internal backend API.
 Alembic revisions лежат в `backend/alembic`, а `backend-db-init` накатывает migrations на запуске.
 
 ### Две frontend-точки входа в одном web-модуле
@@ -46,17 +47,18 @@ Alembic revisions лежат в `backend/alembic`, а `backend-db-init` нака
 Веб-слой разделен на `admin` и `site` entrypoint, но оба собираются из одного репозитория
 и одного Vite workspace. В текущем inspected runtime `admin` сохраняет полный showcase/catalog/control flow, а `site` сведен к отдельной изолированной landing-странице `be monki`. Это оставляет независимые deployment targets без разрыва frontend-репозитория.
 
-### Файловый реестр источников парсера
+### Стартовый seed реестра источников
 
-Конфигурация источников рантайма парсера принадлежит `service/config/sources.json`.
-Этот реестр отделен от DB-owned curated source metadata в backend.
+`service/config/sources.json` больше не является runtime-реестром.
+Это только seed-файл для первого запуска: parser service отправляет его в backend, если в БД еще нет registry-источников.
+После первого bootstrap единственным источником истины остается таблица `sources` в PostgreSQL.
 
 ## Ключевые архитектурные паттерны
 
 ### Оркестрация поверх исполнения
 
 Backend запускает sync и probe jobs, зеркалирует source flags, получает event streams и ingest'ит parser output.
-Parser service исполняет source runs и публикует обновления рантайма, но не владеет пользовательскими рабочими процессами.
+Parser service исполняет source runs и публикует обновления рантайма, но не владеет реестром источников и пользовательскими рабочими процессами.
 
 ### Канонический слой контрактов
 
@@ -70,8 +72,8 @@ Parser service исполняет source runs и публикует обновл
 
 ### Разделение read/write по ответственности
 
-- Backend пишет curated catalog, auth, pricing, categories, dedup, showcase и sync runtime state.
-- Parser service пишет file-backed source registry и in-memory runtime state.
+- Backend пишет curated catalog, auth, pricing, categories, dedup, showcase, source registry и sync runtime state.
+- Parser service владеет только parser execution и process-local runtime state.
 - Frontend не владеет постоянными данными; он владеет view state и session UX.
 
 ### Фильтрация публичной поверхности
@@ -146,8 +148,8 @@ Hosted и local deployment используют один и тот же набо
 - frontend contracts в основном handwritten, а не generated from OpenAPI
 - большие orchestration-файлы концентрируют много логики во всех трех основных code module
 - parser-service jobs хранят runtime state process-local, а не DB-backed
-- source ownership split между file-backed parser config и DB-backed backend metadata
-- latent DB dependencies существуют в parser service environment без active documented DB write path
+- parser-service jobs хранят runtime state process-local и могут теряться при перезапуске
+- `service/config/sources.json` используется только как bootstrap seed и не участвует в runtime после засидивания БД
 - `site` и `admin` разделены по runtime и bundle, но по-прежнему собираются из одного frontend-module и используют один и тот же nginx pattern для `/api` proxy
 
 ## Карта чтения

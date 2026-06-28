@@ -169,13 +169,11 @@
 
 - `product_listings.url_normalized`
 - `product_listings.host_normalized`
-- `sources.host_normalized`
 
 И индексы:
 
 - `product_listings (url_normalized)`
 - `product_listings (host_normalized, handle)`
-- `sources (host_normalized)`
 
 ### Поиск товара по source URL
 

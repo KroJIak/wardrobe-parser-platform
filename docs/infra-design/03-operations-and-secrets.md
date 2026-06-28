@@ -13,6 +13,7 @@
 | `POSTGRES_PASSWORD` | postgres, backend, service | аутентификация в database |
 | `ADMIN_SUPERUSER_PASSWORD` | backend | bootstrap admin access |
 | `ADMIN_TOKEN_SECRET` | backend | подпись token |
+| `INTERNAL_API_TOKEN` | backend, service | защита internal source registry API |
 | Bybit pricing env vars | backend-worker, backend | интеграция с внешним pricing source |
 
 Операционное правило: все secrets должны передаваться через environment configuration и никогда не коммититься в git.
@@ -24,9 +25,9 @@
 | PostgreSQL data | все curated и operational state |
 | Redis append-only data | continuity runtime cache и limiter |
 | backend uploads | continuity product/showcase images |
-| parser `config/sources.json` | continuity parser source registry |
+| parser `config/sources.json` | bootstrap seed для первого засидивания реестра источников |
 
-Важная текущая деталь: для parser source registry это не named volume из базового compose, а отдельный mount, который operations должны обеспечить сами в hosted-среде.
+Важная текущая деталь: отдельный mount для `service/config` нужен только если operations хотят редактировать стартовый seed-файл вне образа. Runtime-реестр источников после bootstrap уже хранится в PostgreSQL.
 
 ## Проверки работоспособности и runtime
 
@@ -51,7 +52,7 @@
 
 1. PostgreSQL
 2. backend uploads volume
-3. parser `config/sources.json`
+3. экспорт/backup PostgreSQL со строками `sources`
 
 Redis persistence полезен для continuity, но не заменяет резервные копии базы данных.
 
@@ -60,7 +61,7 @@ Redis persistence полезен для continuity, но не заменяет �
 Текущий runtime имеет явные ограничения, которые operations должны учитывать:
 
 - parser-service job state process-local и может потеряться при перезапуске
-- source registry file-backed, а не DB-backed
+- runtime source registry DB-backed и может быть пересеян только в полностью пустую БД
 - backend владеет schema upgrades; нельзя запускать ad hoc parser-service migrations как будто они authoritative
 - frontend containers предполагают runtime reachability backend для всего API traffic
 

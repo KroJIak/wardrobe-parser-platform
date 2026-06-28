@@ -15,7 +15,6 @@
 | `postgres` | основная база данных | `5432` |
 | `redis` | кэш и основа rate-limit | `6379` |
 | `backend-db-init` | runner миграций | n/a |
-| `service-db-init` | задокументированный no-op init service | n/a |
 | `backend` | основной API | `8000` |
 | `backend-worker` | worker обновления курса Bybit | n/a |
 | `service` | parser runtime | `8000` |
@@ -29,11 +28,10 @@
 
 1. `postgres` и `redis` становятся healthy.
 2. `backend-db-init` применяет Alembic migrations.
-3. `service-db-init` успешно завершается как no-op.
-4. Стартует `backend`.
-5. Стартует `service`.
-6. `frontend-site` и `frontend-admin` стартуют после health backend.
-7. `backend-worker` стартует после того, как database после миграций готова.
+3. Стартует `backend`.
+4. Стартует `service`.
+5. `frontend-site` и `frontend-admin` стартуют после health backend.
+6. `backend-worker` стартует после того, как database после миграций готова.
 
 ## Локальное отображение портов
 
@@ -55,9 +53,9 @@
 | `postgres_data` | postgres | долговечные данные БД |
 | `redis_data` | redis | append-only persistence Redis |
 | `backend_uploads` | backend | uploaded product и showcase assets |
-| `./service/config:/app/config` | parser service (override) | файловый реестр источников |
+| `./service/config:/app/config` | parser service (override) | локально редактируемый bootstrap seed источников |
 
-Важно: bind mount для parser config существует только в `docker-compose.override.yml`. Если запускать только базовый `docker-compose.yml`, сервис будет работать с копией `config/sources.json`, попавшей в image на стадии сборки.
+Важно: bind mount для parser config существует только в `docker-compose.override.yml`. Если запускать только базовый `docker-compose.yml`, сервис будет работать с копией `config/sources.json`, попавшей в image на стадии сборки. Это допустимо, потому что файл нужен только для первичного bootstrap пустой БД и не является runtime source of truth.
 
 ## Модель локальной маршрутизации
 
@@ -72,7 +70,8 @@
 
 - backend -> parser service использует `http://service:8000`
 - parser service -> backend использует `http://backend:8000`
-- backend и parser service -> database используют внутренний hostname из `POSTGRES_HOST`
+- backend и parser service обмениваются закрытым токеном `INTERNAL_API_TOKEN`
+- backend -> database использует внутренний hostname из `POSTGRES_HOST`
 
 ## Локальная проверка работоспособности
 

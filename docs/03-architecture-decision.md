@@ -17,7 +17,7 @@
 
 - одного backend API как авторитетной business boundary
 - одного специализированного runtime парсера для sync execution
-- одной общей PostgreSQL schema, которой владеют backend migrations
+- одной общей PostgreSQL schema, которой владеют backend migrations и backend runtime
 - одного frontend module с двумя deployable entrypoint: `site` и `admin`
 
 ## Рассмотренные альтернативы
@@ -36,8 +36,8 @@ stack, deployment cadence и существенную часть state/UI infras
 ### Считать parser service равноправным владельцем database
 
 Отклонено для текущего baseline.
-Хотя parser service получает `DATABASE_URL` и содержит SQL-related dependencies, inspected runtime
-не показывает active first-class DB contract, сопоставимого с ownership backend.
+Текущий runtime делает backend единственным владельцем persistent state:
+parser service не ходит в PostgreSQL напрямую, а получает runtime-реестр источников через internal backend API.
 
 ## Решение
 
@@ -46,7 +46,8 @@ stack, deployment cadence и существенную часть state/UI infras
 - `frontend-site` и `frontend-admin` — отдельные web deployment из одного frontend module
 - `backend` остается единственной public/admin API boundary
 - `service` остается специализированным parser и probe runtime
-- `backend` остается владельцем migrations и curated database state
+- `backend` остается владельцем migrations, source registry и curated database state
+- `service/config/sources.json` используется только как bootstrap seed для первичного заполнения пустой БД
 - `api/` остается contract layer для всех следующих implementation и refactor работ
 
 ## Обоснование
@@ -60,7 +61,7 @@ stack, deployment cadence и существенную часть state/UI infras
 ### Плюсы
 
 - четкая системная authority для auth, curation и public read models
-- явная документация для file-backed parser state в отличие от DB-backed curated state
+- явная документация для DB-backed source registry и backend-owned persistent state
 - отдельные deploy target для site и admin без размножения репозиториев
 - стабильный contract layer для последующей очистки кода
 
@@ -69,6 +70,7 @@ stack, deployment cadence и существенную часть state/UI infras
 - frontend по-прежнему остается одним репозиторием и одним build-workspace, даже при раздельных runtime entrypoint
 - parser-service runtime остается process-local для job state
 - backend остается плотным orchestration center для нескольких business areas
+- первичный bootstrap parser sources теперь зависит от internal backend API и общего секрета между сервисами
 
 ## Правило пересмотра
 
@@ -77,6 +79,7 @@ stack, deployment cadence и существенную часть state/UI infras
 - ownership migrations
 - repository boundaries frontend
 - persistence strategy parser-service
+- ownership source registry
 - auth transport или permission model
 
 должно одновременно обновлять этот ADR и соответствующие документы `api/`, domain docs и schema docs.

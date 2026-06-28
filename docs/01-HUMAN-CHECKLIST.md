@@ -11,7 +11,7 @@
 | Учетные данные | admin bootstrap, token secret, учетные данные базы данных |
 | Необязательная внешняя зависимость | настройка Bybit pricing worker |
 | Хостинг | сервисы Dokploy, домены, volumes, сетевая маршрутизация |
-| Операции | резервные копии, постоянные uploads, постоянная конфигурация источников |
+| Операции | резервные копии, постоянные uploads, bootstrap конфигурация источников |
 
 ## 1. Создать файлы окружения
 
@@ -35,6 +35,7 @@
 | `ADMIN_SUPERUSER_LOGIN` | backend | стартовый admin bootstrap |
 | `ADMIN_SUPERUSER_PASSWORD` | backend | стартовый admin bootstrap |
 | `ADMIN_TOKEN_SECRET` | backend | секрет подписи HMAC token |
+| `INTERNAL_API_TOKEN` | backend, service | закрытый токен internal API между сервисами |
 | `ADMIN_ACCESS_TOKEN_TTL_SEC` | backend | срок жизни access token |
 | `ADMIN_REFRESH_TOKEN_TTL_SEC` | backend | срок жизни refresh token |
 
@@ -61,9 +62,9 @@ POSTGRES_HOST=postgres
 | `backend_uploads` | product/showcase/admin-uploaded assets | `backend` |
 
 Дополнительно локальная разработка монтирует `./service/config` в parser service,
-чтобы `config/sources.json` переживал перезапуски контейнера и оставался редактируемым из рабочей области.
+чтобы `config/sources.json` оставался редактируемым seed-файлом из рабочей области.
 
-Это монтирование приходит именно из `docker-compose.override.yml`. Базовый `docker-compose.yml` не создает отдельный named volume для parser source registry: без override или отдельного hosted mount сервис работает с копией `config/sources.json`, зашитой в image/контейнерный filesystem.
+Это монтирование приходит именно из `docker-compose.override.yml`. Базовый `docker-compose.yml` не создает отдельный named volume для parser source registry, потому что runtime-реестр больше не хранится в файле: после первого bootstrap авторитетные данные уже лежат в PostgreSQL.
 
 ## 3. Подготовить доступ в admin
 
@@ -89,18 +90,14 @@ POSTGRES_HOST=postgres
 
 Остальные параметры Bybit зафиксированы в backend-коде и не настраиваются через `.env`.
 
-## 5. Подготовить конфигурацию источников
-
-Parser service владеет `config/sources.json` как durable source registry file.
+## 5. Подготовить стартовый seed источников
 
 Перед эксплуатацией:
 
 1. Убедитесь, что файл существует по пути `service/config/sources.json`.
-2. В local baseline убедитесь, что используется `docker-compose.override.yml`, где `./service/config` bind-mount'ится в контейнер.
-3. В hosted runtime добавьте отдельный persistent mount для этого пути вручную; базовый compose сам по себе его не создает.
-4. Считайте изменения source runtime configuration файловым состоянием parser-service.
-
-Не предполагается, что source configuration parser-service сейчас хранится в PostgreSQL.
+2. При первом запуске parser service отправит его в backend internal API, если в таблице `sources` еще нет registry-источников.
+3. После появления данных в БД дальнейшие изменения источников считаются DB-состоянием backend, а не файловым состоянием parser-service.
+4. Override-монтирование `./service/config:/app/config` полезно только для локального редактирования стартового seed.
 
 ## 6. Чеклист локального запуска
 
@@ -109,7 +106,7 @@ Parser service владеет `config/sources.json` как durable source regist
 1. Заполнить `.env`.
 2. Выполнить `docker compose up -d --build`.
 3. Убедиться, что `backend-db-init` завершился успешно.
-4. Убедиться, что `service-db-init` завершился успешно с документированным no-op сообщением.
+4. Убедиться, что `backend` и `service` стартовали без ошибок bootstrap.
 5. Проверить endpoints:
    - backend: `http://localhost:${BACKEND_EXTERNAL_PORT}/health`
    - parser service: `http://localhost:${SERVICE_EXTERNAL_PORT}/health`
@@ -147,5 +144,5 @@ Parser service владеет `config/sources.json` как durable source regist
 - `backend` использует внутренний адрес `http://service:8000` по умолчанию; отдельно настраивать это не нужно
 - `service` может достучаться до `backend` через `BACKEND_BASE_URL`
 - `backend_uploads` переживает перезапуски контейнеров
-- `service/config/sources.json` переживает перезапуски сервиса парсинга
+- если БД была пустой, registry-источники появились в PostgreSQL после первого запуска
 - вход в admin проходит, а `/api/v1/auth/me` возвращает session с permissions
