@@ -1,0 +1,13 @@
+.git
+.gitignore
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.mypy_cache
+**/.venv
+**/venv
+**/.env
+**/.env.*
+frontend/node_modules
+frontend/dist
+service/browser_runner/node_modules
