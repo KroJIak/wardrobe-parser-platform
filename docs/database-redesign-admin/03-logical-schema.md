@@ -228,6 +228,7 @@
 | `slug` | text | no | Автогенерируемый технический slug |
 | `node_kind` | text enum | no | `filter / multifilter` |
 | `is_enabled` | boolean | no | Активность |
+| `restrict_by_gender` | boolean | no | Применять ли к leaf-фильтру gender-scope из `men/women` витрины |
 | `created_at` | timestamptz | no | Создан |
 | `updated_at` | timestamptz | no | Обновлен |
 
