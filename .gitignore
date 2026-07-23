@@ -60,4 +60,5 @@ docs/internal/
 
 .agents/
 .ai/
+.grok/
 AGENTS.md
