@@ -57,3 +57,7 @@ testing/
 
 # Internal docs
 docs/internal/
+
+.agents/
+.ai/
+AGENTS.md
