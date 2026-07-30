@@ -52,13 +52,15 @@ testing/
 # Obsidian
 .obsidian/
 
-# Codex
-.codex
-
 # Internal docs
 docs/internal/
 
+# AI
+.codex
 .agents/
 .ai/
 .grok/
 AGENTS.md
+CLAUDE.md
+.mcp.json
+.claude/
