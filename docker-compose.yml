@@ -140,6 +140,7 @@ services:
       dockerfile: Dockerfile
       args:
         FRONTEND_APP: site
+        VITE_PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-}
     expose:
       - "80"
 #    depends_on:
@@ -153,6 +154,7 @@ services:
       dockerfile: Dockerfile
       args:
         FRONTEND_APP: admin
+        VITE_PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-}
     expose:
       - "80"
     depends_on:
