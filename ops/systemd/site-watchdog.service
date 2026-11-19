@@ -1,0 +1,12 @@
+[Unit]
+Description=Watchdog витрины: перезагрузка хоста, если сайт не отвечает
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/site-watchdog.sh
+# Проверка не должна мешать работе: у неё свой таймер с интервалом в минуту.
+TimeoutStartSec=60
+Nice=10
+IOSchedulingClass=idle

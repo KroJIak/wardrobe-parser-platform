@@ -1,0 +1,11 @@
+[Unit]
+Description=Периодическая проверка витрины watchdog-ом
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=10s
+Unit=site-watchdog.service
+
+[Install]
+WantedBy=timers.target

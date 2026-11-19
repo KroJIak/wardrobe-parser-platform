@@ -1,0 +1,11 @@
+[Unit]
+Description=Ежедневная очистка Docker
+
+[Timer]
+OnCalendar=*-*-* 05:17:00
+Persistent=true
+RandomizedDelaySec=15min
+Unit=docker-prune.service
+
+[Install]
+WantedBy=timers.target

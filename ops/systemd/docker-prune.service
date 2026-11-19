@@ -1,0 +1,10 @@
+[Unit]
+Description=Очистка неиспользуемых образов, сборок и кэша Docker
+Documentation=https://docs.docker.com/reference/cli/docker/system/prune/
+
+[Service]
+Type=oneshot
+# Удаляем только то, что не используется контейнерами, и старше недели.
+ExecStart=/usr/bin/docker system prune --all --force --filter "until=168h"
+ExecStart=/usr/bin/docker builder prune --all --force --filter "until=168h"
+ExecStart=/usr/bin/docker volume prune --force --filter "label=!keep"
