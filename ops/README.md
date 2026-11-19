@@ -11,6 +11,8 @@
 | `systemd/docker-prune.service` | `/etc/systemd/system/` | очистка неиспользуемых образов, сборок и томов |
 | `systemd/docker-prune.timer` | `/etc/systemd/system/` | таймер: очистка раз в сутки |
 | `systemd/10-docker-limits.conf` | `/etc/systemd/system/docker.service.d/` | лимиты памяти самого Docker и запрет свопа |
+| `ssh/98-wardrobe-resilience.conf` | `/etc/ssh/sshd_config.d/` | запас под сканирование порта 22 |
+| `fail2ban/dokploy-sshd.local` | `/etc/fail2ban/jail.d/` | час бана для переборщиков |
 
 ## Установка
 
@@ -26,6 +28,18 @@ install -m 0644 systemd/10-docker-limits.conf /etc/systemd/system/docker.service
 systemctl daemon-reload
 systemctl enable --now site-watchdog.timer docker-prune.timer
 systemctl restart docker   # применяет лимиты демона, контейнеры перезапустятся
+```
+
+Настройки доступа по SSH и бана переборщиков ставятся отдельно: на хосте
+уже есть drop-in от Dokploy, поэтому свой файл добавляется рядом и
+перезагружает только sshd, не обрывая активные сессии.
+
+```bash
+install -m 0644 ssh/98-wardrobe-resilience.conf /etc/ssh/sshd_config.d/98-wardrobe-resilience.conf
+sshd -t && systemctl reload ssh
+
+install -m 0644 fail2ban/dokploy-sshd.local /etc/fail2ban/jail.d/dokploy-sshd.local
+fail2ban-client reload
 ```
 
 ## Проверка

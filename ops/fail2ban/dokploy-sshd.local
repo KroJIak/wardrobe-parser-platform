@@ -1,0 +1,9 @@
+# Managed by prepare-dokploy-debian13.sh
+[sshd]
+enabled = true
+mode = aggressive
+
+# Сканеры отлетают на час: они создают основную нагрузку на порт 22.
+bantime = 3600
+findtime = 600
+maxretry = 3
