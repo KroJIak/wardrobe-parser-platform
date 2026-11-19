@@ -15,8 +15,8 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    mem_limit: 700M
-    memswap_limit: 700M
+    mem_limit: 1024M
+    memswap_limit: 1024M
 
   redis:
     image: redis:7-alpine
