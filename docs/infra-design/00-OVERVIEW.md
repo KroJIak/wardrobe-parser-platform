@@ -30,6 +30,7 @@ Layer 1: State services          - PostgreSQL, Redis, файловая конф�
 | 01 | `01-local-compose.md` | локальная топология сервисов и модель портов | `02-ARCHITECTURE.md` |
 | 02 | `02-hosted-dokploy-and-networking.md` | hosted-маршрутизация и привязка доменов | `01-local-compose.md` |
 | 03 | `03-operations-and-secrets.md` | secrets, постоянное хранилище, health и резервные копии | `01-local-compose.md` |
+| 04 | `04-server-resilience.md` | лимиты памяти, watchdog хоста, очистка диска | `03-operations-and-secrets.md` |
 
 ## Междоменные зависимости
 
