@@ -1,0 +1,11 @@
+[Unit]
+Description=Бэкап БД витрины
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/backup_db.sh
+# Копия снимается без остановки сервисов, но занимает место и CPU.
+Nice=15
+IOSchedulingClass=idle

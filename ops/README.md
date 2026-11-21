@@ -13,6 +13,9 @@
 | `systemd/10-docker-limits.conf` | `/etc/systemd/system/docker.service.d/` | лимиты памяти самого Docker и запрет свопа |
 | `ssh/98-wardrobe-resilience.conf` | `/etc/ssh/sshd_config.d/` | запас под сканирование порта 22 |
 | `fail2ban/dokploy-sshd.local` | `/etc/fail2ban/jail.d/` | час бана для переборщиков |
+| `backup_db.sh` | `/usr/local/bin/backup_db.sh` | бэкап БД: логическая копия и копия тома |
+| `systemd/backup-db.service` | `/etc/systemd/system/` | запуск бэкапа |
+| `systemd/backup-db.timer` | `/etc/systemd/system/` | таймер: бэкап раз в сутки |
 
 ## Установка
 
@@ -41,6 +44,21 @@ sshd -t && systemctl reload ssh
 install -m 0644 fail2ban/dokploy-sshd.local /etc/fail2ban/jail.d/dokploy-sshd.local
 fail2ban-client reload
 ```
+
+Бэкап базы ставится отдельно: скрипт снимает копию сам, а таймер запускает
+её раз в сутки и хранит две недели истории.
+
+```bash
+install -m 0755 backup_db.sh /usr/local/bin/backup_db.sh
+install -m 0644 systemd/backup-db.service /etc/systemd/system/backup-db.service
+install -m 0644 systemd/backup-db.timer /etc/systemd/system/backup-db.timer
+systemctl daemon-reload
+systemctl enable --now backup-db.timer
+```
+
+Копии складываются в `/var/backups/wardrobe`: логическая (`pg_dump`) и
+физическая (`pg_basebackup`) — обе согласованные и снимаются без остановки
+витрины.
 
 ## Проверка
 

@@ -1,0 +1,11 @@
+[Unit]
+Description=Ежедневный бэкап БД витрины
+
+[Timer]
+OnCalendar=*-*-* 04:12:00
+Persistent=true
+RandomizedDelaySec=20min
+Unit=backup-db.service
+
+[Install]
+WantedBy=timers.target
