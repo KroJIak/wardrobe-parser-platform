@@ -12,7 +12,8 @@
 | `systemd/docker-prune.timer` | `/etc/systemd/system/` | таймер: очистка раз в сутки |
 | `systemd/10-docker-limits.conf` | `/etc/systemd/system/docker.service.d/` | лимиты памяти самого Docker и запрет свопа |
 | `ssh/98-wardrobe-resilience.conf` | `/etc/ssh/sshd_config.d/` | запас под сканирование порта 22 |
-| `fail2ban/dokploy-sshd.local` | `/etc/fail2ban/jail.d/` | час бана для переборщиков |
+| `fail2ban/dokploy-sshd.local` | `/etc/fail2ban/jail.d/` | jail sshd: полчаса бана, пять попыток, админ-IP вне бана |
+| `fail2ban/sshd-wardrobe.local` | `/etc/fail2ban/filter.d/` | бан только за перебор логинов, обрыв соединения не считается |
 | `backup_db.sh` | `/usr/local/bin/backup_db.sh` | бэкап БД: логическая копия и копия тома |
 | `systemd/backup-db.service` | `/etc/systemd/system/` | запуск бэкапа |
 | `systemd/backup-db.timer` | `/etc/systemd/system/` | таймер: бэкап раз в сутки |
@@ -41,6 +42,7 @@ systemctl restart docker   # применяет лимиты демона, ко�
 install -m 0644 ssh/98-wardrobe-resilience.conf /etc/ssh/sshd_config.d/98-wardrobe-resilience.conf
 sshd -t && systemctl reload ssh
 
+install -m 0644 fail2ban/sshd-wardrobe.local /etc/fail2ban/filter.d/sshd-wardrobe.local
 install -m 0644 fail2ban/dokploy-sshd.local /etc/fail2ban/jail.d/dokploy-sshd.local
 fail2ban-client reload
 ```
