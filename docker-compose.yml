@@ -158,6 +158,9 @@ services:
 #    depends_on:
 #      backend:
 #        condition: service_healthy
+    volumes:
+      # Файлы витрины: nginx отдаёт их сам, минуя приложение.
+      - backend_uploads:/app/uploads:ro
     restart: unless-stopped
     mem_limit: 150M
     memswap_limit: 150M
