@@ -7,4 +7,4 @@ filter = sshd-wardrobe
 bantime = 1800
 findtime = 600
 maxretry = 5
-ignoreip = 127.0.0.1/8 ::1 213.139.219.6
+ignoreip = 127.0.0.1/8 ::1 213.139.219.6 188.130.155.177
